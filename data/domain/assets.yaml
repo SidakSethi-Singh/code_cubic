@@ -1,0 +1,124 @@
+# EdgeMind Assets Domain Data
+# Defines the industrial assets monitored by the field-service copilot.
+
+assets:
+  - id: "P-204"
+    name: "Centrifugal Pump P-204"
+    type: "centrifugal_pump"
+    site_id: "plant_north"
+    symptoms:
+      - "grinding noise at high load"
+      - "high vibration"
+      - "seal leak"
+    critical_params:
+      - param: "coupling_torque"
+        unit: "Nm"
+        nominal: 40
+      - param: "casing_temperature"
+        unit: "C"
+        nominal: 65
+
+  - id: "P-205"
+    name: "Centrifugal Pump P-205"
+    type: "centrifugal_pump"
+    site_id: "plant_north"
+    symptoms:
+      - "low flow rate"
+      - "cavitation noise"
+    critical_params:
+      - param: "coupling_torque"
+        unit: "Nm"
+        nominal: 42
+      - param: "casing_temperature"
+        unit: "C"
+        nominal: 60
+
+  - id: "C-101"
+    name: "Reciprocating Compressor C-101"
+    type: "compressor"
+    site_id: "plant_north"
+    symptoms:
+      - "excessive blowby"
+      - "high discharge temp"
+    critical_params:
+      - param: "discharge_pressure"
+        unit: "bar"
+        nominal: 15
+      - param: "oil_pressure"
+        unit: "bar"
+        nominal: 3.5
+
+  - id: "C-102"
+    name: "Reciprocating Compressor C-102"
+    type: "compressor"
+    site_id: "plant_south"
+    symptoms:
+      - "valve flutter"
+      - "oil leak"
+    critical_params:
+      - param: "discharge_pressure"
+        unit: "bar"
+        nominal: 14.5
+      - param: "oil_pressure"
+        unit: "bar"
+        nominal: 3.8
+
+  - id: "V-301"
+    name: "Main Steam Control Valve V-301"
+    type: "control_valve"
+    site_id: "plant_south"
+    symptoms:
+      - "stiction"
+      - "passing when closed"
+    critical_params:
+      - param: "stem_travel"
+        unit: "mm"
+        nominal: 120
+      - param: "actuator_pressure"
+        unit: "bar"
+        nominal: 4.0
+
+  - id: "V-302"
+    name: "Feedwater Control Valve V-302"
+    type: "control_valve"
+    site_id: "plant_south"
+    symptoms:
+      - "hunting"
+      - "gland leak"
+    critical_params:
+      - param: "stem_travel"
+        unit: "mm"
+        nominal: 95
+      - param: "actuator_pressure"
+        unit: "bar"
+        nominal: 4.2
+
+  - id: "IR-01"
+    name: "Tank Inspection Crawler IR-01"
+    type: "inspection_robot"
+    site_id: "plant_north"
+    symptoms:
+      - "loss of track traction"
+      - "camera jitter"
+    critical_params:
+      - param: "battery_voltage"
+        unit: "V"
+        nominal: 24
+      - param: "motor_current"
+        unit: "A"
+        nominal: 5.5
+
+  - id: "IR-02"
+    name: "Pipe Inspection Rover IR-02"
+    type: "inspection_robot"
+    site_id: "plant_south"
+    symptoms:
+      - "tether snag"
+      - "sensor dropout"
+    critical_params:
+      - param: "battery_voltage"
+        unit: "V"
+        nominal: 24
+      - param: "motor_current"
+        unit: "A"
+        nominal: 4.2

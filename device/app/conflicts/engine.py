@@ -2,6 +2,8 @@
 from ..policy.factors import AUTHORITY_MAP
 
 def _authority_of(memory: dict) -> int:
+    if "authority" in memory and memory["authority"] is not None:
+        return int(memory["authority"])
     return AUTHORITY_MAP.get(memory.get("kind", ""), 0)
 
 def detect_conflict(mem_a: dict, mem_b: dict, tolerance: float = 1e-6) -> bool:

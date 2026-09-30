@@ -1,2 +1,18 @@
-fastapi
-uvicorn
+# Core
+fastapi>=0.104.0
+uvicorn[standard]>=0.24.0
+pydantic>=2.5.0
+httpx>=0.25.0
+python-multipart>=0.0.6
+
+# Vector DB
+qdrant-client>=1.7.0
+
+# Embeddings (optional — deterministic fallback if not installed)
+fastembed>=0.3.0
+
+# Data
+pyyaml>=6.0
+
+# Dev & Testing
+pytest>=7.4.0

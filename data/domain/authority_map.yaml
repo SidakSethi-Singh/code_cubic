@@ -1,0 +1,11 @@
+# EdgeMind Authority Map
+# Defines the authority levels of different document types for conflict resolution.
+# Higher number = higher authority.
+
+authority:
+  bulletin: 3
+  manual: 2
+  incident: 1
+  fix: 1
+  note: 0
+  sensor: 0

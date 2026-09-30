@@ -1,0 +1,23 @@
+# EdgeMind PII Patterns
+# Defines patterns for identifying and masking PII in field notes.
+
+patterns:
+  - name: "phone_india"
+    description: "Indian mobile phone number format"
+    regex: "\\+91-[0-9]{10}"
+    example: "+91-9876543210"
+
+  - name: "email"
+    description: "Standard email address"
+    regex: "[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\\.[a-zA-Z]{2,}"
+    example: "tech@example.com"
+
+  - name: "api_key"
+    description: "System API Key or Token"
+    regex: "(?i)(api[_-]?key|token)[\\s:=]+['\"]?[A-Za-z0-9_-]{20,}['\"]?"
+    example: "api_key: abcdef1234567890abcdef"
+
+  - name: "employee_id"
+    description: "Company Employee ID format"
+    regex: "EMP-\\d{5}"
+    example: "EMP-10293"

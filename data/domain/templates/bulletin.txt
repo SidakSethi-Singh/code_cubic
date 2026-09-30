@@ -1,0 +1,13 @@
+SERVICE BULLETIN: {bulletin_id}
+Affected Asset Type: {asset_type}
+
+NOTICE OF SPECIFICATION CHANGE
+
+Due to recent operational analysis, the specified {param} has been updated.
+Previous Value: {old_value} {unit}
+New Value: {new_value} {unit}
+
+Reason for Change:
+{reason}
+
+Please update all maintenance procedures accordingly.

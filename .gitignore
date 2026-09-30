@@ -1,5 +1,72 @@
+# ============================
+# EdgeMind – .gitignore
+# ============================
+
+# Python bytecode & caches
 __pycache__/
-*.pyc
-*.db
+*.py[cod]
+*$py.class
+*.pyo
+
+# Virtual environments
+.venv/
+venv/
+env/
+
+# IDE / Editor
 .vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# Environment & secrets
 .env
+.env.*
+!.env.example
+
+# SQLite databases (generated at runtime)
+*.db
+*.sqlite
+*.sqlite3
+
+# Generated data (reproducible via `make seed`)
+data/generated/
+data/golden/
+
+# Evaluation results (reproducible via `make eval`)
+data/eval/
+
+# Model weights & caches (downloaded at runtime)
+data/models/
+data/shard_*/
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# Pytest
+.pytest_cache/
+htmlcov/
+.coverage
+
+# Distribution / packaging
+dist/
+build/
+*.egg-info/
+*.egg
+
+# Jupyter
+.ipynb_checkpoints/
+
+# Markdown documents (keep README.md)
+*.md
+!README.md
+
+# Testing & Evaluation
+device/tests/
+eval/
+data/seed/
+
+# Build scripts
+Makefile

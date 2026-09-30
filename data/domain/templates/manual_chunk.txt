@@ -1,0 +1,7 @@
+{asset_name} ({asset_id}) — {section_title}
+
+{content}
+
+Specified {param}: {value} {unit}
+Refer to manufacturer documentation for full specifications.
+Last updated: {date}

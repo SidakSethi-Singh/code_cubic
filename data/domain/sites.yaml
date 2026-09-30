@@ -1,0 +1,21 @@
+# EdgeMind Sites Domain Data
+# Defines the operational sites where assets are located.
+
+sites:
+  - id: "plant_north"
+    name: "Plant North"
+    location: "North Industrial Zone"
+    asset_ids:
+      - "P-204"
+      - "P-205"
+      - "C-101"
+      - "IR-01"
+
+  - id: "plant_south"
+    name: "Plant South"
+    location: "South Delta Region"
+    asset_ids:
+      - "C-102"
+      - "V-301"
+      - "V-302"
+      - "IR-02"

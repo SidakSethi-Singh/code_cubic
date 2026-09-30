@@ -1,0 +1,27 @@
+# EdgeMind Claim Patterns
+# Defines the types of parameter claims, their valid ranges, and conflict tolerance.
+
+claims:
+  - type: "torque"
+    param: "torque"
+    unit: "Nm"
+    typical_range: [10, 500]
+    conflict_tolerance: 5.0  # Allowable variance in Nm before conflict
+
+  - type: "pressure"
+    param: "pressure"
+    unit: "bar"
+    typical_range: [0, 250]
+    conflict_tolerance: 0.5  # Allowable variance in bar
+
+  - type: "temperature"
+    param: "temperature"
+    unit: "C"
+    typical_range: [-40, 600]
+    conflict_tolerance: 2.0  # Allowable variance in degrees Celsius
+
+  - type: "clearance"
+    param: "clearance"
+    unit: "mm"
+    typical_range: [0.01, 150.0]
+    conflict_tolerance: 0.1  # Allowable variance in mm

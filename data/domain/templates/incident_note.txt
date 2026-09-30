@@ -1,0 +1,13 @@
+INCIDENT REPORT
+Date: {date}
+Technician: {technician}
+Asset: {asset_name} ({asset_id})
+
+Symptom Reported:
+{symptom}
+
+Observation:
+{observation}
+
+Action Taken:
+{action_taken}

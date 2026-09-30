@@ -1,0 +1,14 @@
+MAINTENANCE FIX NOTE
+Asset ID: {asset_id}
+
+Symptom: {symptom}
+Root Cause: {root_cause}
+
+Fix Description:
+{fix_description}
+
+Parts Used:
+{parts_used}
+
+Result:
+{result}
