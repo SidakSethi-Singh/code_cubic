@@ -1,23 +1,20 @@
-# EdgeMind PII Patterns
-# Defines patterns for identifying and masking PII in field notes.
+# PII and sensitive token patterns for edge privacy guard
+phone:
+  pattern: '(?:\+?\d{1,3}[-.\s]?)?\(?\d{3}\)?[-.\s]?\d{3}[-.\s]?\d{4}|\+\d{1,4}[-.\s]?\d{1,4}[-.\s]?\d{3,4}[-.\s]?\d{3,4}'
+  description: 'International and national phone numbers'
+  risk_level: 'critical'
 
-patterns:
-  - name: "phone_india"
-    description: "Indian mobile phone number format"
-    regex: "\\+91-[0-9]{10}"
-    example: "+91-9876543210"
+email:
+  pattern: '[a-zA-Z0-9_.+-]+@[a-zA-Z0-9-]+\.[a-zA-Z0-9-.]+'
+  description: 'Corporate and personal email addresses'
+  risk_level: 'critical'
 
-  - name: "email"
-    description: "Standard email address"
-    regex: "[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\\.[a-zA-Z]{2,}"
-    example: "tech@example.com"
+api_key:
+  pattern: '(?:AKIA[0-9A-Z]{16}|sk-[a-zA-Z0-9]{24,}|ghp_[a-zA-Z0-9]{36}|bearer\s+[a-zA-Z0-9_\-\.]{20,})'
+  description: 'API keys, bearer tokens, and secrets'
+  risk_level: 'critical'
 
-  - name: "api_key"
-    description: "System API Key or Token"
-    regex: "(?i)(api[_-]?key|token)[\\s:=]+['\"]?[A-Za-z0-9_-]{20,}['\"]?"
-    example: "api_key: abcdef1234567890abcdef"
-
-  - name: "employee_id"
-    description: "Company Employee ID format"
-    regex: "EMP-\\d{5}"
-    example: "EMP-10293"
+employee_id:
+  pattern: '(?i)\b(?:TK-\d{3,4}|EMP-\d{4,6}|TECH-ID:?\s*[A-Z0-9-]+)\b'
+  description: 'Technician / employee internal identification'
+  risk_level: 'medium'

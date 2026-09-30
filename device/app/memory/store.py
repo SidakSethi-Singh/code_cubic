@@ -1,299 +1,414 @@
-"""device/app/memory/store.py
-The ONLY place in the codebase where vector database libraries (Qdrant Edge / Qdrant Client) are imported.
-Provides MemoryStoreProtocol and both InMemoryStore and QdrantMemoryStore implementations.
-"""
+from __future__ import annotations
 
-import math
-import logging
-from typing import Protocol, List, Dict, Any, Optional, Tuple
-from .models import Memory
+import os
+import shutil
+import uuid
+from datetime import datetime, timezone
+from pathlib import Path
+from typing import Any
 
-logger = logging.getLogger(__name__)
+# ONLY file in the repo allowed to import qdrant_edge
+import qdrant_edge
 
-# Check if Qdrant is available
-try:
-    from qdrant_client import QdrantClient
-    from qdrant_client.http import models as qmodels
-    HAS_QDRANT = True
-except ImportError:
-    HAS_QDRANT = False
-
-
-class MemoryStoreProtocol(Protocol):
-    def upsert(
-        self,
-        mem: Memory,
-        *,
-        dense_vector: Optional[List[float]] = None,
-        sparse_vector: Optional[Tuple[List[int], List[float]]] = None,
-        only_if_older_than: Optional[int] = None,
-    ) -> None: ...
-    def search_dense(self, vector: List[float], top_k: int, filters: Optional[Dict] = None) -> List[Tuple[str, float, Dict]]: ...
-    def search_sparse(self, indices: List[int], values: List[float], top_k: int, filters: Optional[Dict] = None) -> List[Tuple[str, float, Dict]]: ...
-    def get(self, ids: List[str]) -> List[Memory]: ...
-    def set_status(self, ids: List[str], status: str, **extra) -> None: ...
-    def scan(self, flt: Dict, limit: int, offset: Optional[str] = None) -> Tuple[List[Memory], Optional[str]]: ...
-    def facets(self, key: str, flt: Optional[Dict] = None) -> Dict[str, int]: ...
-    def count(self) -> int: ...
-    def clear(self) -> None: ...
-    def delete(self, ids: List[str]) -> None: ...
-    def optimize(self) -> None: ...
+from device.app.memory.models import (
+    BranchRank,
+    Hit,
+    Memory,
+    MemoryStore,
+    SearchRequest,
+)
+from device.app.embed.embedder import EdgeEmbedder
 
 
-def cosine_similarity(v1: List[float], v2: List[float]) -> float:
-    if not v1 or not v2 or len(v1) != len(v2):
-        return 0.0
-    dot_product = sum(a * b for a, b in zip(v1, v2))
-    norm_v1 = math.sqrt(sum(a * a for a in v1))
-    norm_v2 = math.sqrt(sum(b * b for b in v2))
-    if norm_v1 == 0 or norm_v2 == 0:
-        return 0.0
-    return dot_product / (norm_v1 * norm_v2)
+class QdrantEdgeMemoryStore:
+    def __init__(self, base_dir: str | Path | None = None, embedder: EdgeEmbedder | None = None):
+        self.base_dir = Path(base_dir) if base_dir else Path("data/shards")
+        self.base_dir.mkdir(parents=True, exist_ok=True)
 
+        self.device_shard_path = self.base_dir / "device_memory"
+        self.fleet_shard_path = self.base_dir / "fleet_mirror"
 
-class InMemoryStore:
-    def __init__(self):
-        self._memories: Dict[str, Memory] = {}
-        self._dense_vectors: Dict[str, List[float]] = {}
-        self._sparse_vectors: Dict[str, Tuple[List[int], List[float]]] = {}
+        self.embedder = embedder or EdgeEmbedder.get_instance()
+        self.dense_dim = self.embedder.dense_dim
 
-    def upsert(
-        self,
-        mem: Memory,
-        *,
-        dense_vector: Optional[List[float]] = None,
-        sparse_vector: Optional[Tuple[List[int], List[float]]] = None,
-        only_if_older_than: Optional[int] = None,
-    ) -> None:
-        if only_if_older_than is not None:
-            existing = self._memories.get(mem.mem_id)
-            if existing and existing.version >= only_if_older_than:
-                return
-        self._memories[mem.mem_id] = mem
-        if dense_vector is not None:
-            self._dense_vectors[mem.mem_id] = dense_vector
-        if sparse_vector is not None:
-            self._sparse_vectors[mem.mem_id] = sparse_vector
+        self.device_shard = self._init_shard(self.device_shard_path)
+        self.fleet_shard = self._init_shard(self.fleet_shard_path)
 
-    def _apply_filters(self, mem: Memory, filters: Optional[Dict]) -> bool:
-        if not filters:
-            return True
-        for k, v in filters.items():
-            if v is None:
-                continue
-            if isinstance(v, list):
-                val = getattr(mem, k, None)
-                if val is None:
-                    val = mem.payload.get(k)
-                if val not in v:
-                    return False
-            else:
-                val = getattr(mem, k, None)
-                if val is None:
-                    val = mem.payload.get(k)
-                if val != v:
-                    return False
-        return True
+        self._ensure_payload_indexes(self.device_shard)
+        self._ensure_payload_indexes(self.fleet_shard)
 
-    def search_dense(self, vector: List[float], top_k: int, filters: Optional[Dict] = None) -> List[Tuple[str, float, Dict]]:
-        results = []
-        for mem_id, stored_vector in self._dense_vectors.items():
-            mem = self._memories.get(mem_id)
-            if not mem or not self._apply_filters(mem, filters):
-                continue
-            sim = cosine_similarity(vector, stored_vector)
-            results.append((mem_id, sim, mem.model_dump(mode="json")))
-        results.sort(key=lambda x: x[1], reverse=True)
-        return results[:top_k]
-
-    def search_sparse(self, indices: List[int], values: List[float], top_k: int, filters: Optional[Dict] = None) -> List[Tuple[str, float, Dict]]:
-        results = []
-        query_map = dict(zip(indices, values))
-        for mem_id, (stored_indices, stored_values) in self._sparse_vectors.items():
-            mem = self._memories.get(mem_id)
-            if not mem or not self._apply_filters(mem, filters):
-                continue
-            score = 0.0
-            stored_map = dict(zip(stored_indices, stored_values))
-            for idx, val in query_map.items():
-                if idx in stored_map:
-                    score += val * stored_map[idx]
-            if score > 0:
-                results.append((mem_id, score, mem.model_dump(mode="json")))
-        results.sort(key=lambda x: x[1], reverse=True)
-        return results[:top_k]
-
-    def get(self, ids: List[str]) -> List[Memory]:
-        return [self._memories[mem_id] for mem_id in ids if mem_id in self._memories]
-
-    def set_status(self, ids: List[str], status: str, **extra) -> None:
-        for mem_id in ids:
-            if mem_id in self._memories:
-                self._memories[mem_id].status = status
-                for k, v in extra.items():
-                    setattr(self._memories[mem_id], k, v)
-
-    def scan(self, flt: Dict, limit: int, offset: Optional[str] = None) -> Tuple[List[Memory], Optional[str]]:
-        results = []
-        keys = list(self._memories.keys())
-
-        start_idx = 0
-        if offset:
-            try:
-                start_idx = keys.index(offset) + 1
-            except ValueError:
-                pass
-
-        for i in range(start_idx, len(keys)):
-            mem = self._memories[keys[i]]
-            if self._apply_filters(mem, flt):
-                results.append(mem)
-                if len(results) >= limit:
-                    next_offset = keys[i] if i < len(keys) - 1 else None
-                    return results, next_offset
-
-        return results, None
-
-    def facets(self, key: str, flt: Optional[Dict] = None) -> Dict[str, int]:
-        counts: Dict[str, int] = {}
-        for mem in self._memories.values():
-            if not self._apply_filters(mem, flt):
-                continue
-            val = getattr(mem, key, None)
-            if val is None:
-                val = mem.payload.get(key)
-            if val is not None:
-                counts[str(val)] = counts.get(str(val), 0) + 1
-        return counts
-
-    def count(self) -> int:
-        return len(self._memories)
-
-    def clear(self) -> None:
-        self._memories.clear()
-        self._dense_vectors.clear()
-        self._sparse_vectors.clear()
-
-    def delete(self, ids: List[str]) -> None:
-        for mem_id in ids:
-            self._memories.pop(mem_id, None)
-            self._dense_vectors.pop(mem_id, None)
-            self._sparse_vectors.pop(mem_id, None)
-
-    def optimize(self) -> None:
-        pass
-
-
-class QdrantMemoryStore:
-    """Production Qdrant adapter for Edge memory storage.
-    Runs locally (embedded) with fallback to InMemoryStore if QdrantClient fails.
-    """
-    def __init__(self, collection_name: str = "device_memories", path: Optional[str] = None):
-        self.collection_name = collection_name
-        self.path = path
-        self._in_memory = InMemoryStore()
-
-        if HAS_QDRANT:
-            try:
-                if path:
-                    self.client = QdrantClient(path=path)
-                else:
-                    self.client = QdrantClient(":memory:")
-                self._init_collection()
-                logger.info(f"Initialized Qdrant client (collection='{collection_name}', path={path})")
-            except Exception as e:
-                logger.warning(f"Failed to start Qdrant client: {e}. Falling back to InMemoryStore.")
-                self.client = None
-        else:
-            self.client = None
-
-    def _init_collection(self):
-        if not self.client:
-            return
-        collections = [c.name for c in self.client.get_collections().collections]
-        if self.collection_name not in collections:
-            self.client.create_collection(
-                collection_name=self.collection_name,
-                vectors_config={
-                    "dense": qmodels.VectorParams(size=384, distance=qmodels.Distance.COSINE),
-                },
-                sparse_vectors_config={
-                    "sparse": qmodels.SparseVectorParams(index=qmodels.SparseIndexParams(on_disk=False)),
-                }
-            )
-            # Create payload indexes
-            for field_name in ["kind", "status", "sync_state", "asset_id", "site_id", "authority"]:
-                try:
-                    self.client.create_payload_index(
-                        collection_name=self.collection_name,
-                        field_name=field_name,
-                        field_schema=qmodels.PayloadSchemaType.KEYWORD
-                    )
-                except Exception:
-                    pass
-
-    def upsert(
-        self,
-        mem: Memory,
-        *,
-        dense_vector: Optional[List[float]] = None,
-        sparse_vector: Optional[Tuple[List[int], List[float]]] = None,
-        only_if_older_than: Optional[int] = None,
-    ) -> None:
-        self._in_memory.upsert(mem, dense_vector=dense_vector, sparse_vector=sparse_vector, only_if_older_than=only_if_older_than)
-        if self.client and dense_vector:
-            try:
-                vectors = {"dense": dense_vector}
-                if sparse_vector:
-                    vectors["sparse"] = qmodels.SparseVector(
-                        indices=sparse_vector[0],
-                        values=sparse_vector[1]
-                    )
-                self.client.upsert(
-                    collection_name=self.collection_name,
-                    points=[
-                        qmodels.PointStruct(
-                            id=mem.mem_id,
-                            vector=vectors,
-                            payload=mem.model_dump(mode="json")
-                        )
-                    ]
+    def _get_config(self) -> qdrant_edge.EdgeConfig:
+        return qdrant_edge.EdgeConfig(
+            vectors={
+                "dense": qdrant_edge.EdgeVectorParams(
+                    size=self.dense_dim,
+                    distance=qdrant_edge.Distance.Cosine,
                 )
-            except Exception as e:
-                logger.debug(f"Qdrant upsert fallback: {e}")
+            },
+            sparse_vectors={
+                "bm25": qdrant_edge.EdgeSparseVectorParams(
+                    modifier=qdrant_edge.Modifier.Idf
+                )
+            },
+        )
 
-    def search_dense(self, vector: List[float], top_k: int, filters: Optional[Dict] = None) -> List[Tuple[str, float, Dict]]:
-        return self._in_memory.search_dense(vector, top_k, filters)
-
-    def search_sparse(self, indices: List[int], values: List[float], top_k: int, filters: Optional[Dict] = None) -> List[Tuple[str, float, Dict]]:
-        return self._in_memory.search_sparse(indices, values, top_k, filters)
-
-    def get(self, ids: List[str]) -> List[Memory]:
-        return self._in_memory.get(ids)
-
-    def set_status(self, ids: List[str], status: str, **extra) -> None:
-        self._in_memory.set_status(ids, status, **extra)
-
-    def scan(self, flt: Dict, limit: int, offset: Optional[str] = None) -> Tuple[List[Memory], Optional[str]]:
-        return self._in_memory.scan(flt, limit, offset)
-
-    def facets(self, key: str, flt: Optional[Dict] = None) -> Dict[str, int]:
-        return self._in_memory.facets(key, flt)
-
-    def count(self) -> int:
-        return self._in_memory.count()
-
-    def clear(self) -> None:
-        self._in_memory.clear()
-        if self.client:
+    def _init_shard(self, path: Path) -> qdrant_edge.EdgeShard:
+        path.mkdir(parents=True, exist_ok=True)
+        # Check if directory already has segment data
+        has_data = any(path.iterdir())
+        if has_data:
             try:
-                self.client.delete_collection(self.collection_name)
-                self._init_collection()
+                return qdrant_edge.EdgeShard.load(str(path))
+            except Exception:
+                return qdrant_edge.EdgeShard.load(str(path), self._get_config())
+        else:
+            return qdrant_edge.EdgeShard.create(str(path), self._get_config())
+
+    def _ensure_payload_indexes(self, shard: qdrant_edge.EdgeShard) -> None:
+        keyword_fields = ["kind", "status", "sync_state", "scope", "asset_id", "asset_type", "site_id"]
+        for field in keyword_fields:
+            try:
+                shard.update(
+                    qdrant_edge.UpdateOperation.create_field_index(
+                        field, qdrant_edge.PayloadSchemaType.Keyword
+                    )
+                )
             except Exception:
                 pass
 
-    def delete(self, ids: List[str]) -> None:
-        self._in_memory.delete(ids)
+        try:
+            shard.update(
+                qdrant_edge.UpdateOperation.create_field_index(
+                    "authority", qdrant_edge.PayloadSchemaType.Integer
+                )
+            )
+        except Exception:
+            pass
+
+        try:
+            shard.update(
+                qdrant_edge.UpdateOperation.create_field_index(
+                    "updated_at", qdrant_edge.PayloadSchemaType.Datetime
+                )
+            )
+        except Exception:
+            pass
+
+    def _record_to_memory(self, record: Any) -> Memory:
+        p = dict(record.payload or {})
+        created_at = p.get("created_at")
+        if isinstance(created_at, str):
+            created_at = datetime.fromisoformat(created_at)
+        elif not created_at:
+            created_at = datetime.now(timezone.utc)
+
+        updated_at = p.get("updated_at")
+        if isinstance(updated_at, str):
+            updated_at = datetime.fromisoformat(updated_at)
+        elif not updated_at:
+            updated_at = datetime.now(timezone.utc)
+
+        expires_at = p.get("expires_at")
+        if isinstance(expires_at, str):
+            expires_at = datetime.fromisoformat(expires_at)
+
+        return Memory(
+            mem_id=str(record.id),
+            version=int(p.get("version", 1)),
+            content=str(p.get("content", "")),
+            content_hash=str(p.get("content_hash", "")),
+            kind=str(p.get("kind", "note")),
+            status=str(p.get("status", "active")),
+            sync_state=str(p.get("sync_state", "local_only")),
+            scope=str(p.get("scope", "device")),
+            authority=int(p.get("authority", 0)),
+            site_id=str(p.get("site_id", "")),
+            asset_id=p.get("asset_id"),
+            asset_type=p.get("asset_type"),
+            source_device=str(p.get("source_device", "")),
+            created_at=created_at,
+            updated_at=updated_at,
+            expires_at=expires_at,
+            payload=p.get("extra_payload", {}),
+        )
+
+    def _memory_to_payload(self, mem: Memory) -> dict[str, Any]:
+        return {
+            "version": mem.version,
+            "content": mem.content,
+            "content_hash": mem.content_hash,
+            "kind": mem.kind,
+            "status": mem.status,
+            "sync_state": mem.sync_state,
+            "scope": mem.scope,
+            "authority": mem.authority,
+            "site_id": mem.site_id,
+            "asset_id": mem.asset_id,
+            "asset_type": mem.asset_type,
+            "source_device": mem.source_device,
+            "created_at": mem.created_at.isoformat(),
+            "updated_at": mem.updated_at.isoformat(),
+            "expires_at": mem.expires_at.isoformat() if mem.expires_at else None,
+            "extra_payload": mem.payload,
+        }
+
+    def upsert(
+        self,
+        mem: Memory,
+        *,
+        only_if_older_than: int | None = None,
+        shard_name: str = "device_memory",
+    ) -> None:
+        target_shard = self.device_shard if shard_name == "device_memory" else self.fleet_shard
+
+        if only_if_older_than is not None:
+            existing = target_shard.retrieve([mem.mem_id], with_payload=True, with_vector=False)
+            if existing:
+                curr_ver = int(existing[0].payload.get("version", 0))
+                if curr_ver >= only_if_older_than:
+                    return
+
+        dense_vec = mem.vectors.get("dense")
+        bm25_vec = mem.vectors.get("bm25")
+
+        if dense_vec is None or bm25_vec is None:
+            dense_list, sparse_list = self.embedder.embed_document([mem.content])
+            dense_vec = dense_list[0]
+            bm25_vec = sparse_list[0]
+            mem.vectors["dense"] = dense_vec
+            mem.vectors["bm25"] = bm25_vec
+
+        if isinstance(bm25_vec, dict):
+            sparse_obj = qdrant_edge.SparseVector(
+                indices=bm25_vec["indices"],
+                values=bm25_vec["values"],
+            )
+        elif hasattr(bm25_vec, "indices") and hasattr(bm25_vec, "values"):
+            sparse_obj = qdrant_edge.SparseVector(
+                indices=list(bm25_vec.indices),
+                values=list(bm25_vec.values),
+            )
+        else:
+            sparse_obj = bm25_vec
+
+        point = qdrant_edge.Point(
+            id=mem.mem_id,
+            vector={
+                "dense": dense_vec,
+                "bm25": sparse_obj,
+            },
+            payload=self._memory_to_payload(mem),
+        )
+
+        target_shard.update(qdrant_edge.UpdateOperation.upsert_points([point]))
+
+    @staticmethod
+    def _is_valid_point_id(point_id: Any) -> bool:
+        try:
+            uuid.UUID(str(point_id))
+            return True
+        except ValueError:
+            return False
+
+    def get(self, ids: list[str]) -> list[Memory]:
+        if not ids:
+            return []
+        valid_ids = [i for i in ids if self._is_valid_point_id(i)]
+        if not valid_ids:
+            return []
+        found_map: dict[str, Memory] = {}
+
+        # Check device_memory first (P0)
+        try:
+            recs_dev = self.device_shard.retrieve(valid_ids, with_payload=True, with_vector=False)
+            for r in recs_dev:
+                m = self._record_to_memory(r)
+                found_map[m.mem_id] = m
+        except Exception:
+            pass
+
+        missing_ids = [i for i in valid_ids if i not in found_map]
+        if missing_ids:
+            try:
+                recs_fleet = self.fleet_shard.retrieve(missing_ids, with_payload=True, with_vector=False)
+                for r in recs_fleet:
+                    m = self._record_to_memory(r)
+                    found_map[m.mem_id] = m
+            except Exception:
+                pass
+
+        return [found_map[i] for i in ids if i in found_map]
+
+    def set_status(self, ids: list[str], status: str, **extra: Any) -> None:
+        if not ids:
+            return
+        valid_ids = [i for i in ids if self._is_valid_point_id(i)]
+        if not valid_ids:
+            return
+        update_data = {"status": status, "updated_at": datetime.now(timezone.utc).isoformat(), **extra}
+        for shard in [self.device_shard, self.fleet_shard]:
+            try:
+                existing = shard.retrieve(valid_ids, with_payload=False, with_vector=False)
+                existing_ids = [str(r.id) for r in existing]
+                if existing_ids:
+                    shard.update(qdrant_edge.UpdateOperation.set_payload(existing_ids, update_data))
+            except Exception:
+                pass
+
+    def scan(
+        self,
+        flt: dict[str, Any] | None = None,
+        limit: int = 100,
+        offset: str | None = None,
+    ) -> tuple[list[Memory], str | None]:
+        scroll_req = qdrant_edge.ScrollRequest(
+            offset=offset,
+            limit=limit,
+            with_payload=True,
+            with_vector=False,
+        )
+        records, next_offset = self.device_shard.scroll(scroll_req)
+        memories = [self._record_to_memory(r) for r in records]
+
+        if flt:
+            filtered = []
+            for m in memories:
+                match = True
+                for k, v in flt.items():
+                    if getattr(m, k, None) != v and m.payload.get(k) != v:
+                        match = False
+                        break
+                if match:
+                    filtered.append(m)
+            memories = filtered
+
+        return memories, next_offset
+
+    def facets(self, key: str, flt: dict[str, Any] | None = None) -> dict[str, int]:
+        try:
+            req = qdrant_edge.FacetRequest(key=key, limit=100)
+            resp = self.device_shard.facet(req)
+            result: dict[str, int] = {}
+            for hit in resp.hits:
+                result[str(hit.value)] = int(hit.count)
+            return result
+        except Exception:
+            mems, _ = self.scan(limit=1000)
+            res: dict[str, int] = {}
+            for m in mems:
+                val = getattr(m, key, None) or m.payload.get(key)
+                if val is not None:
+                    res[str(val)] = res.get(str(val), 0) + 1
+            return res
 
     def optimize(self) -> None:
-        self._in_memory.optimize()
+        try:
+            self.device_shard.optimize()
+        except Exception:
+            pass
+        try:
+            self.fleet_shard.optimize()
+        except Exception:
+            pass
+
+    def search(self, req: SearchRequest) -> list[Hit]:
+        q_dense, q_bm25_data = self.embedder.embed_query(req.query)
+        q_sparse = qdrant_edge.SparseVector(
+            indices=q_bm25_data.indices,
+            values=q_bm25_data.values,
+        )
+
+        all_hits: dict[str, Hit] = {}
+
+        # Search both shards: device_memory (P0) and fleet_mirror (P1)
+        for shard_name, shard in [("device_memory", self.device_shard), ("fleet_mirror", self.fleet_shard)]:
+            try:
+                # 1. Branch: Dense
+                dense_prefetch = qdrant_edge.Prefetch(
+                    limit=max(req.limit * 3, 20),
+                    query=qdrant_edge.Query.Nearest(q_dense, using="dense"),
+                )
+                # 2. Branch: BM25
+                bm25_prefetch = qdrant_edge.Prefetch(
+                    limit=max(req.limit * 3, 20),
+                    query=qdrant_edge.Query.Nearest(q_sparse, using="bm25"),
+                )
+
+                # Execute RRF fusion on edge
+                fusion_query = qdrant_edge.QueryRequest(
+                    limit=max(req.limit * 3, 20),
+                    query=qdrant_edge.Fusion.Rrf(k=60),
+                    prefetches=[dense_prefetch, bm25_prefetch],
+                    with_payload=True,
+                )
+                fused_results = shard.query(fusion_query)
+
+                # If explain requested, also get single branch ranks
+                dense_ranks: dict[str, tuple[int, float]] = {}
+                bm25_ranks: dict[str, tuple[int, float]] = {}
+                if req.explain:
+                    qr_d = qdrant_edge.QueryRequest(
+                        limit=30,
+                        query=qdrant_edge.Query.Nearest(q_dense, using="dense"),
+                        with_payload=False,
+                    )
+                    res_d = shard.query(qr_d)
+                    for rk, pt in enumerate(res_d, start=1):
+                        dense_ranks[str(pt.id)] = (rk, float(pt.score))
+
+                    qr_b = qdrant_edge.QueryRequest(
+                        limit=30,
+                        query=qdrant_edge.Query.Nearest(q_sparse, using="bm25"),
+                        with_payload=False,
+                    )
+                    res_b = shard.query(qr_b)
+                    for rk, pt in enumerate(res_b, start=1):
+                        bm25_ranks[str(pt.id)] = (rk, float(pt.score))
+
+                for r in fused_results:
+                    mid = str(r.id)
+                    # Dedupe: device_memory (P0) wins over fleet_mirror (P1)
+                    if mid in all_hits and shard_name == "fleet_mirror":
+                        continue
+
+                    mem = self._record_to_memory(r)
+                    if req.filters:
+                        m_match = True
+                        for fk, fv in req.filters.items():
+                            if getattr(mem, fk, None) != fv and mem.payload.get(fk) != fv:
+                                m_match = False
+                                break
+                        if not m_match:
+                            continue
+
+                    branch_ranks: list[BranchRank] = []
+                    if req.explain:
+                        d_rk, d_sc = dense_ranks.get(mid, (99, 0.0))
+                        b_rk, b_sc = bm25_ranks.get(mid, (99, 0.0))
+                        branch_ranks = [
+                            BranchRank(branch="dense", rank=d_rk, score=d_sc),
+                            BranchRank(branch="bm25", rank=b_rk, score=b_sc),
+                        ]
+
+                    fused_score = float(r.score)
+                    # Normalize RRF score (1/(60+1) + 1/(60+1) = ~0.0328) into high-fidelity ~0.6-0.98 score
+                    # Final rerank by authority (0..3) and status
+                    authority_multiplier = 1.0 + (mem.authority * 0.05)
+                    status_multiplier = 0.7 if mem.status in ("superseded", "disputed") else 1.0
+                    normalized_score = min(0.99, (fused_score / 0.033) * 0.90 * authority_multiplier * status_multiplier)
+
+                    all_hits[mid] = Hit(
+                        mem_id=mid,
+                        score=round(normalized_score, 3),
+                        memory=mem,
+                        branch_ranks=branch_ranks,
+                        fused_score=round(fused_score, 4),
+                        shard=shard_name,
+                    )
+            except Exception as e:
+                # Shard query error fallback
+                continue
+
+        # Sort combined hits by final score descending
+        sorted_hits = sorted(all_hits.values(), key=lambda h: h.score, reverse=True)
+        return sorted_hits[:req.limit]

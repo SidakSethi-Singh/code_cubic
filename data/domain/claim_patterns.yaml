@@ -1,27 +1,25 @@
-# EdgeMind Claim Patterns
-# Defines the types of parameter claims, their valid ranges, and conflict tolerance.
+# Claim regex patterns for industrial asset parameters
+torque:
+  pattern: '(?i)(?:torque[a-z\s]*|tighten[a-z\s]*to\s+)?(\d+(?:\.\d+)?)\s*(?:Nm|N-m|ft-lbs?|ft\s*lbs?)'
+  unit: 'Nm'
+  property: 'torque'
 
-claims:
-  - type: "torque"
-    param: "torque"
-    unit: "Nm"
-    typical_range: [10, 500]
-    conflict_tolerance: 5.0  # Allowable variance in Nm before conflict
+pressure:
+  pattern: '(?i)(?:pressure[a-z\s]*|head[a-z\s]*)?(\d+(?:\.\d+)?)\s*(?:bar|psi|kPa|MPa)'
+  unit: 'bar'
+  property: 'pressure'
 
-  - type: "pressure"
-    param: "pressure"
-    unit: "bar"
-    typical_range: [0, 250]
-    conflict_tolerance: 0.5  # Allowable variance in bar
+temperature:
+  pattern: '(?i)(?:temp(?:erature)?[a-z\s]*)?(\d+(?:\.\d+)?)\s*(?:°C|C|°F|F)\b'
+  unit: 'C'
+  property: 'temperature'
 
-  - type: "temperature"
-    param: "temperature"
-    unit: "C"
-    typical_range: [-40, 600]
-    conflict_tolerance: 2.0  # Allowable variance in degrees Celsius
+clearance:
+  pattern: '(?i)(?:clearance|runout|tolerance|gap|shim[s]?)[a-z\s]*(\d+(?:\.\d+)?)\s*(?:mm|in|thou|µm)'
+  unit: 'mm'
+  property: 'clearance'
 
-  - type: "clearance"
-    param: "clearance"
-    unit: "mm"
-    typical_range: [0.01, 150.0]
-    conflict_tolerance: 0.1  # Allowable variance in mm
+speed_rpm:
+  pattern: '(?i)(\d{1,3}(?:,\d{3})*|\d+)\s*(?:rpm|RPM)'
+  unit: 'RPM'
+  property: 'speed'

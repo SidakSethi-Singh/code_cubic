@@ -1,5 +1,5 @@
 # ============================
-# EdgeMind – .gitignore
+# EdgeMind .gitignore
 # ============================
 
 # Python bytecode & caches
@@ -7,11 +7,15 @@ __pycache__/
 *.py[cod]
 *$py.class
 *.pyo
+.pytest_cache/
+.coverage
+htmlcov/
 
 # Virtual environments
 .venv/
 venv/
 env/
+ENV/
 
 # IDE / Editor
 .vscode/
@@ -19,54 +23,37 @@ env/
 *.swp
 *.swo
 *~
+Thumbs.db
+.DS_Store
 
-# Environment & secrets
-.env
-.env.*
-!.env.example
+# Node / UI
+ui/node_modules/
+ui/.next/
+ui/out/
+ui/build/
+ui/.env.local
+node_modules/
+.next/
 
-# SQLite databases (generated at runtime)
-*.db
+# Runtime SQLite & Vector DB binary storage
 *.sqlite
 *.sqlite3
-
-# Generated data (reproducible via `make seed`)
+*.db
+*.wal
+data/devices/
+data/hub_state.json
+data/models/
 data/generated/
 data/golden/
-
-# Evaluation results (reproducible via `make eval`)
 data/eval/
 
-# Model weights & caches (downloaded at runtime)
-data/models/
-data/shard_*/
-
-# OS files
-.DS_Store
-Thumbs.db
-
-# Pytest
-.pytest_cache/
-htmlcov/
-.coverage
-
-# Distribution / packaging
+# Distribution & packaging
 dist/
 build/
 *.egg-info/
 *.egg
 
-# Jupyter
-.ipynb_checkpoints/
-
-# Markdown documents (keep README.md)
-*.md
-!README.md
-
-# Testing & Evaluation
-device/tests/
-eval/
-data/seed/
-
-# Build scripts
-Makefile
+# Logs
+*.log
+npm-debug.log*
+yarn-debug.log*

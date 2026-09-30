@@ -1,0 +1,86 @@
+from __future__ import annotations
+
+import os
+from pathlib import Path
+from typing import NamedTuple
+from fastembed import TextEmbedding, SparseTextEmbedding
+
+
+class SparseVectorData(NamedTuple):
+    indices: list[int]
+    values: list[float]
+
+
+class EdgeEmbedder:
+    _instance: EdgeEmbedder | None = None
+
+    def __init__(self, cache_dir: str | Path | None = None):
+        self.cache_dir = Path(cache_dir) if cache_dir else Path.home() / ".cache" / "edgemind_models"
+        self.cache_dir.mkdir(parents=True, exist_ok=True)
+        os.environ["FASTEMBED_CACHE_PATH"] = str(self.cache_dir)
+
+        self.dense_model_name = "BAAI/bge-small-en-v1.5"
+        self.sparse_model_name = "Qdrant/bm25"
+        self.dense_dim = 384
+
+        self._dense_model = self._load_dense()
+        self._sparse_model = self._load_sparse()
+
+    def _load_dense(self) -> TextEmbedding:
+        try:
+            return TextEmbedding(
+                model_name=self.dense_model_name,
+                cache_dir=str(self.cache_dir),
+                local_files_only=True
+            )
+        except Exception:
+            return TextEmbedding(
+                model_name=self.dense_model_name,
+                cache_dir=str(self.cache_dir),
+                local_files_only=False
+            )
+
+    def _load_sparse(self) -> SparseTextEmbedding:
+        try:
+            return SparseTextEmbedding(
+                model_name=self.sparse_model_name,
+                cache_dir=str(self.cache_dir),
+                local_files_only=True
+            )
+        except Exception:
+            return SparseTextEmbedding(
+                model_name=self.sparse_model_name,
+                cache_dir=str(self.cache_dir),
+                local_files_only=False
+            )
+
+    @classmethod
+    def get_instance(cls, cache_dir: str | Path | None = None) -> EdgeEmbedder:
+        if cls._instance is None:
+            cls._instance = cls(cache_dir=cache_dir)
+        return cls._instance
+
+    def embed_document(self, texts: list[str]) -> tuple[list[list[float]], list[SparseVectorData]]:
+        if not texts:
+            return [], []
+        dense_gen = self._dense_model.embed(texts)
+        dense_vectors = [v.tolist() for v in dense_gen]
+
+        sparse_gen = self._sparse_model.embed(texts)
+        sparse_vectors = [
+            SparseVectorData(indices=s.indices.tolist(), values=s.values.tolist())
+            for s in sparse_gen
+        ]
+        return dense_vectors, sparse_vectors
+
+    def embed_query(self, query: str) -> tuple[list[float], SparseVectorData]:
+        dense_gen = self._dense_model.query_embed(query)
+        dense_vector = list(dense_gen)[0].tolist()
+
+        sparse_gen = self._sparse_model.query_embed(query)
+        sparse_raw = list(sparse_gen)[0]
+        sparse_vector = SparseVectorData(
+            indices=sparse_raw.indices.tolist(),
+            values=sparse_raw.values.tolist()
+        )
+        return dense_vector, sparse_vector

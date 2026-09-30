@@ -1,82 +1,123 @@
-"""device/app/ingest/pipeline.py — Full ingest: chunk → extract → PII → embed → upsert."""
+from __future__ import annotations
 
+import time
+import uuid
+from datetime import datetime, timezone
+from pathlib import Path
 from typing import Any
-from device.app.memory.models import Memory, make_content_hash, create_memory
-from device.app.ingest.chunker import Chunker
-from device.app.ingest.extractor import extract_all
-from device.app.ingest.pii import pii_flags
 
-AUTHORITY_MAP = {
-    "bulletin": 3,
-    "manual": 2,
-    "incident": 1,
-    "fix": 1,
-    "note": 0,
-    "sensor": 0,
-}
+from device.app.embed.embedder import EdgeEmbedder
+from device.app.ingest.extractors import PatternExtractor
+from device.app.memory.models import Memory, MemoryStore
 
 
 class IngestPipeline:
-    def __init__(self, store: Any, dense_embedder: Any, sparse_embedder: Any,
-                 site_id: str = "plant_north", device_id: str = "device_a"):
+    def __init__(
+        self,
+        store: MemoryStore,
+        embedder: EdgeEmbedder | None = None,
+        extractor: PatternExtractor | None = None,
+    ):
         self.store = store
-        self.dense_embedder = dense_embedder
-        self.sparse_embedder = sparse_embedder
-        self.site_id = site_id
-        self.device_id = device_id
-        self.chunker = Chunker()
+        self.embedder = embedder or EdgeEmbedder.get_instance()
+        self.extractor = extractor or PatternExtractor()
 
-    def ingest(self, content: str, kind: str, asset_id: str | None = None,
-               asset_type: str | None = None, scope: str = "device",
-               authority: int | None = None, **extra) -> list[dict]:
-        """Ingest raw content: chunk → extract → embed → upsert. Returns list of created memory dicts."""
-        if authority is None:
-            authority = AUTHORITY_MAP.get(kind, 0)
+    def chunk_text(self, text: str, chunk_size: int = 500, overlap: int = 50) -> list[str]:
+        text = text.strip()
+        if len(text) <= chunk_size:
+            return [text]
+        words = text.split()
+        chunks = []
+        cur_words: list[str] = []
+        cur_len = 0
+        for w in words:
+            cur_words.append(w)
+            cur_len += len(w) + 1
+            if cur_len >= chunk_size:
+                chunks.append(" ".join(cur_words))
+                # Overlap
+                keep_words = cur_words[-int(overlap / 6):] if len(cur_words) > 10 else cur_words[-2:]
+                cur_words = list(keep_words)
+                cur_len = sum(len(x) + 1 for x in cur_words)
+        if cur_words:
+            chunks.append(" ".join(cur_words))
+        return chunks
 
-        chunks = self.chunker.chunk(content, kind)
-        result_memories = []
+    def ingest_note(
+        self,
+        content: str,
+        kind: str = "note",
+        site_id: str = "Plant North",
+        source_device: str = "Device A",
+        asset_id: str | None = None,
+        asset_type: str | None = None,
+        authority: int = 0,
+        scope: str = "device",
+        target_shard: str = "device_memory",
+        custom_mem_id: str | None = None,
+        created_at: datetime | None = None,
+    ) -> tuple[list[Memory], float]:
+        t0 = time.perf_counter()
 
-        for i, chunk_text in enumerate(chunks):
-            extracted = extract_all(chunk_text)
-            p_flags = pii_flags(chunk_text)
+        chunks = self.chunk_text(content)
+        base_id = custom_mem_id or str(uuid.uuid4())
+        created_dt = created_at or datetime.now(timezone.utc)
 
-            payload = {
+        # Batch embed documents
+        dense_vecs, sparse_vecs = self.embedder.embed_document(chunks)
+
+        ingested_memories: list[Memory] = []
+        for i, chunk in enumerate(chunks):
+            chunk_id = (
+                base_id
+                if len(chunks) == 1
+                else str(uuid.uuid5(uuid.UUID(base_id), f"chunk_{i}"))
+            )
+            content_hash = self.extractor.compute_content_hash(chunk)
+            claims = self.extractor.extract_claims(chunk)
+            pii_flags, redacted_text, has_pii = self.extractor.detect_pii(chunk)
+
+            payload_data: dict[str, Any] = {
+                "claims": claims,
+                "pii_flags": pii_flags,
+                "has_pii": has_pii,
+                "redacted_text": redacted_text,
                 "chunk_index": i,
                 "total_chunks": len(chunks),
-                "entities": extracted["entities"],
-                "claims": extracted["claims"],
-                "tags": extracted["tags"],
-                "pii_flags": p_flags,
+                "original_base_id": base_id,
             }
 
-            mem = create_memory(
-                content=chunk_text,
+            mem = Memory(
+                mem_id=chunk_id,
+                version=1,
+                content=chunk,
+                content_hash=content_hash,
                 kind=kind,
-                site_id=self.site_id,
-                source_device=self.device_id,
-                asset_id=asset_id,
-                asset_type=asset_type,
+                status="active",
+                sync_state="local_only" if has_pii else "pending",
                 scope=scope,
                 authority=authority,
-                payload=payload,
+                site_id=site_id,
+                asset_id=asset_id,
+                asset_type=asset_type,
+                source_device=source_device,
+                created_at=created_dt,
+                updated_at=created_dt,
+                payload=payload_data,
+                vectors={
+                    "dense": dense_vecs[i],
+                    "bm25": sparse_vecs[i],
+                },
             )
 
-            dense_vec = self.dense_embedder.embed_one(chunk_text)
-            sp_idx, sp_val = self.sparse_embedder.embed_one(chunk_text)
+            # Upsert into MemoryStore
+            if hasattr(self.store, "upsert"):
+                try:
+                    self.store.upsert(mem, shard_name=target_shard)  # type: ignore[call-arg]
+                except TypeError:
+                    self.store.upsert(mem)
 
-            self.store.upsert(mem, dense_vector=dense_vec, sparse_vector=(sp_idx, sp_val))
-            result_memories.append({"mem_id": mem.mem_id, "kind": kind, "content_hash": mem.content_hash})
+            ingested_memories.append(mem)
 
-        return result_memories
-
-    def ingest_memory(self, memory_dict: dict) -> dict:
-        """Ingest a pre-formed memory dict (e.g. from seed data). Embeds and upserts."""
-        content = memory_dict.get("content", "")
-
-        dense_vec = self.dense_embedder.embed_one(content)
-        sp_idx, sp_val = self.sparse_embedder.embed_one(content)
-
-        mem = Memory(**memory_dict)
-        self.store.upsert(mem, dense_vector=dense_vec, sparse_vector=(sp_idx, sp_val))
-
-        return {"mem_id": mem.mem_id, "kind": mem.kind}
+        elapsed_ms = (time.perf_counter() - t0) * 1000.0
+        return ingested_memories, elapsed_ms
