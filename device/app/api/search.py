@@ -8,6 +8,19 @@ from device.app.api.composer import AnswerResult, ExtractiveComposer
 from device.app.memory.models import Hit, MemoryStore, SearchRequest
 
 
+class RoutingDecision(BaseModel):
+    route: str = "LOCAL_SHARD"
+    tier: int = 1
+    label: str = "LOCAL AIR-GAP SHARD"
+    reason: str = "Resolved directly from on-device Qdrant Edge shard. 0 outbound network calls."
+    target_node: str = "Local Device"
+    peer_device: str | None = None
+    internet_egress_bytes: int = 0
+    lan_rtt_ms: float = 0.00
+    hops: int = 0
+    air_gapped: bool = True
+
+
 class LatencyBreakdown(BaseModel):
     embed_ms: float
     retrieve_ms: float
@@ -22,6 +35,7 @@ class SearchResponse(BaseModel):
     hits: list[Hit]
     answer: AnswerResult
     latency: LatencyBreakdown
+    routing: RoutingDecision = Field(default_factory=RoutingDecision)
     explain_mode: bool = False
     air_gapped: bool = True
 

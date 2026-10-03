@@ -25,6 +25,37 @@ export interface Citation {
   source: string;
 }
 
+export interface RoutingDecision {
+  route: "LOCAL_SHARD" | "PEER_P2P_WIFI" | "FLEET_HUB" | "KNOWLEDGE_GAP";
+  tier: number;
+  label: string;
+  reason: string;
+  target_node: string;
+  peer_device?: string | null;
+  internet_egress_bytes: number;
+  lan_rtt_ms: number;
+  hops: number;
+  air_gapped: boolean;
+}
+
+export interface NodeTopologyInfo {
+  device_id?: string;
+  site_id?: string;
+  port?: number;
+  url?: string;
+  transport?: string;
+  status: string;
+  tier: number;
+  policy?: string;
+  internet_egress?: string;
+}
+
+export interface TopologyData {
+  self: NodeTopologyInfo;
+  peer: NodeTopologyInfo;
+  hub: NodeTopologyInfo;
+}
+
 export interface SearchResponse {
   query: string;
   total_candidates: number;
@@ -37,6 +68,7 @@ export interface SearchResponse {
     rerank_ms: number;
     total_ms: number;
   };
+  routing?: RoutingDecision;
   explain_mode: boolean;
   air_gapped: boolean;
 }

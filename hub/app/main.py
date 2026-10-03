@@ -26,6 +26,11 @@ hub_state = HubState()
 curator = FleetCurator()
 
 
+@app.get("/health")
+def hub_health():
+    return {"status": "healthy", "service": "fleet-hub", "port": 8000}
+
+
 class HeartbeatRequest(BaseModel):
     device_id: str
     site_id: str

@@ -15,6 +15,11 @@ import {
   HelpCircle,
   Sparkles,
   Layers,
+  Network,
+  Server,
+  Wifi,
+  Globe,
+  ShieldCheck,
 } from "lucide-react";
 
 export default function SearchPage() {
@@ -171,21 +176,157 @@ export default function SearchPage() {
           </button>
         ))}
 
-        <div className="ml-auto flex items-center gap-2">
+        <div className="ml-auto flex items-center gap-2 flex-wrap">
+          <span className="font-mono text-xs text-[var(--color-muted)]">DEMO PRESETS:</span>
+          <button
+            onClick={() => {
+              setQuery("P-204 grinding noise at high load");
+              handleSearch("P-204 grinding noise at high load");
+            }}
+            className="text-xs font-mono px-2 py-0.5 rounded-[2px] bg-[var(--color-surface)] border border-[var(--color-border)] text-emerald-400 hover:border-emerald-400"
+          >
+            Tier 1 (Local)
+          </button>
+          <button
+            onClick={() => {
+              setQuery("C-102 gas compressor cavitation");
+              handleSearch("C-102 gas compressor cavitation");
+            }}
+            className="text-xs font-mono px-2 py-0.5 rounded-[2px] bg-[var(--color-surface)] border border-[var(--color-border)] text-amber-400 hover:border-amber-400"
+          >
+            Tier 2 (WiFi P2P)
+          </button>
           <button
             onClick={() => {
               setQuery("unknown turbine seal leak");
               handleSearch("unknown turbine seal leak");
             }}
-            className="text-xs font-mono text-[var(--color-muted)] hover:text-[var(--color-accent)] underline underline-offset-2"
+            className="text-xs font-mono px-2 py-0.5 rounded-[2px] bg-[var(--color-surface)] border border-[var(--color-border)] text-[var(--color-muted)] hover:text-[var(--color-accent)]"
           >
-            Try Low Confidence Demo
+            Tier 0 (Gap)
           </button>
         </div>
       </div>
 
       {result && (
         <>
+          {/* SMART QUERY DISPATCH TELEMETRY (AIR-GAP INVARIANT & HOP CHAIN) */}
+          <div className="rounded-[2px] bg-[var(--color-surface)] border border-[var(--color-border)] p-4 flex flex-col gap-3">
+            <div className="flex items-center justify-between flex-wrap gap-2">
+              <div className="flex items-center gap-2">
+                <Network className="w-4 h-4 text-[var(--color-accent)] accent-text" strokeWidth={1.5} />
+                <span className="font-mono text-xs font-bold text-[var(--color-text)] tracking-wider">
+                  SMART QUERY ROUTING ENGINE
+                </span>
+                <span className="px-2 py-0.5 rounded-[2px] text-[10px] font-mono font-bold bg-[var(--color-surface-2)] border border-[var(--color-border)] text-[var(--color-muted)]">
+                  AIR-GAP INVARIANT
+                </span>
+              </div>
+
+              {/* Route Resolution Pill */}
+              <div
+                className={`px-2.5 py-1 rounded-[2px] font-mono text-xs font-bold flex items-center gap-1.5 border ${
+                  result.routing?.route === "LOCAL_SHARD"
+                    ? "bg-emerald-500/10 border-emerald-500/40 text-emerald-400"
+                    : result.routing?.route === "PEER_P2P_WIFI"
+                    ? "bg-amber-500/10 border-amber-500/40 text-amber-400"
+                    : result.routing?.route === "FLEET_HUB"
+                    ? "bg-sky-500/10 border-sky-500/40 text-sky-400"
+                    : "bg-rose-500/10 border-rose-500/40 text-rose-400"
+                }`}
+              >
+                <span className="inline-block w-2 h-2 rounded-full animate-pulse bg-current" />
+                <span>{result.routing?.label || "LOCAL AIR-GAP SHARD"}</span>
+              </div>
+            </div>
+
+            {/* 3-Tier Dispatch Topology Hop Chain */}
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-2 py-1 font-mono text-xs">
+              {/* Tier 1 Node */}
+              <div
+                className={`p-2.5 rounded-[2px] border transition-all duration-150 ${
+                  result.routing?.tier === 1
+                    ? "border-emerald-500 bg-emerald-500/10 shadow-[0_0_12px_rgba(16,185,129,0.15)]"
+                    : "border-[var(--color-border)] bg-[var(--color-surface-2)] opacity-55"
+                }`}
+              >
+                <div className="flex items-center justify-between text-[10px] text-[var(--color-muted)] mb-1">
+                  <span>TIER 1 (0.00ms)</span>
+                  <span className="font-bold text-emerald-400">0B EGRESS</span>
+                </div>
+                <div className="font-bold text-[var(--color-text)] flex items-center gap-1.5">
+                  <Server className="w-3.5 h-3.5 text-emerald-400" strokeWidth={1.5} />
+                  <span>Local Qdrant Shard</span>
+                </div>
+                <div className="text-[11px] text-[var(--color-muted)] mt-1 truncate">
+                  {result.routing?.tier === 1 ? "✓ Resolved on device with 0 network calls" : "Standby / Evaluated"}
+                </div>
+              </div>
+
+              {/* Tier 2 Subnet Peer */}
+              <div
+                className={`p-2.5 rounded-[2px] border transition-all duration-150 ${
+                  result.routing?.tier === 2
+                    ? "border-amber-500 bg-amber-500/10 shadow-[0_0_12px_rgba(245,158,11,0.15)]"
+                    : "border-[var(--color-border)] bg-[var(--color-surface-2)] opacity-55"
+                }`}
+              >
+                <div className="flex items-center justify-between text-[10px] text-[var(--color-muted)] mb-1">
+                  <span>TIER 2 (WiFi P2P)</span>
+                  <span className="text-amber-400 font-bold">LAN MESH ONLY</span>
+                </div>
+                <div className="font-bold text-[var(--color-text)] flex items-center gap-1.5">
+                  <Wifi className="w-3.5 h-3.5 text-amber-400" strokeWidth={1.5} />
+                  <span>Subnet Peer ({deviceId === "device-b" ? "Device A" : "Device B"})</span>
+                </div>
+                <div className="text-[11px] text-[var(--color-muted)] mt-1 truncate">
+                  {result.routing?.tier === 2
+                    ? `✓ Resolved via peer WiFi (${result.routing.lan_rtt_ms}ms LAN)`
+                    : "Standby P2P fallback"}
+                </div>
+              </div>
+
+              {/* Tier 3 Fleet Cloud */}
+              <div
+                className={`p-2.5 rounded-[2px] border transition-all duration-150 ${
+                  result.routing?.tier === 3
+                    ? "border-sky-500 bg-sky-500/10 shadow-[0_0_12px_rgba(14,165,233,0.15)]"
+                    : "border-[var(--color-border)] bg-[var(--color-surface-2)] opacity-55"
+                }`}
+              >
+                <div className="flex items-center justify-between text-[10px] text-[var(--color-muted)] mb-1">
+                  <span>TIER 3 (Fleet Hub)</span>
+                  <span className="text-sky-400 font-bold">CLOUD EGRESS</span>
+                </div>
+                <div className="font-bold text-[var(--color-text)] flex items-center gap-1.5">
+                  <Globe className="w-3.5 h-3.5 text-sky-400" strokeWidth={1.5} />
+                  <span>Fleet Central Hub</span>
+                </div>
+                <div className="text-[11px] text-[var(--color-muted)] mt-1 truncate">
+                  {result.routing?.tier === 3 ? "✓ Escalated to fleet manuals" : "Air-gap shielded (0 egress)"}
+                </div>
+              </div>
+            </div>
+
+            {/* Telemetry metadata footer */}
+            <div className="text-xs font-mono text-[var(--color-muted)] flex items-center justify-between border-t border-[var(--color-border)] pt-2 flex-wrap gap-2">
+              <span className="truncate max-w-xl">
+                Dispatch: <strong className="text-[var(--color-text)]">{result.routing?.reason}</strong>
+              </span>
+              <div className="flex items-center gap-3 shrink-0">
+                <span>
+                  Target: <strong className="text-[var(--color-text)]">{result.routing?.target_node}</strong>
+                </span>
+                <span>
+                  Internet Egress:{" "}
+                  <strong className="text-emerald-400">
+                    {result.routing?.internet_egress_bytes ?? 0} Bytes
+                  </strong>
+                </span>
+              </div>
+            </div>
+          </div>
+
           {/* Latency Badge: embed/retrieve/fuse/rerank/total in mono ms */}
           <div className="flex items-center gap-4 flex-wrap">
             <div className="flex items-center gap-2 px-3 py-1.5 rounded-[2px] bg-[var(--color-surface)] border border-[var(--color-border)] font-mono text-sm">

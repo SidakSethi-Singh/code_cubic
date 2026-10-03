@@ -391,11 +391,19 @@ class QdrantEdgeMemoryStore:
                         ]
 
                     fused_score = float(r.score)
-                    # Normalize RRF score (1/(60+1) + 1/(60+1) = ~0.0328) into high-fidelity ~0.6-0.98 score
-                    # Final rerank by authority (0..3) and status
+                    d_sc = dense_ranks.get(mid, (99, 0.0))[1]
+                    b_sc = bm25_ranks.get(mid, (99, 0.0))[1]
+
                     authority_multiplier = 1.0 + (mem.authority * 0.05)
                     status_multiplier = 0.7 if mem.status in ("superseded", "disputed") else 1.0
-                    normalized_score = min(0.99, (fused_score / 0.033) * 0.90 * authority_multiplier * status_multiplier)
+
+                    if d_sc < 0.16 or (d_sc < 0.20 and b_sc < 0.45):
+                        # Weak match: accidental term collision or low semantic alignment
+                        raw_sim = max(d_sc, b_sc * 0.5)
+                        normalized_score = max(0.08, min(0.38, raw_sim * 1.2))
+                    else:
+                        # Solid match: scale with RRF fused score
+                        normalized_score = min(0.99, (fused_score / 0.033) * 0.90 * authority_multiplier * status_multiplier)
 
                     all_hits[mid] = Hit(
                         mem_id=mid,

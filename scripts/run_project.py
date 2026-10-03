@@ -50,17 +50,17 @@ def main():
 
     try:
         print("[1/4] Starting Fleet Central Hub API on http://localhost:8000 ...")
-        cmd_hub = [sys.executable, "-m", "uvicorn", "hub.app.main:app", "--host", "0.0.0.0", "--port", "8000", "--log-level", "warning"]
+        cmd_hub = [sys.executable, "-m", "uvicorn", "hub.app.main:app", "--host", "0.0.0.0", "--port", "8000", "--reload", "--log-level", "warning"]
         p_hub = subprocess.Popen(cmd_hub, cwd=str(REPO_ROOT), env=env_hub)
         procs.append(("Hub (8000)", p_hub))
 
         print("[2/4] Starting Device A (Plant North) Node on http://localhost:8001 ...")
-        cmd_dev_a = [sys.executable, "-m", "uvicorn", "device.app.main:app", "--host", "0.0.0.0", "--port", "8001", "--log-level", "warning"]
+        cmd_dev_a = [sys.executable, "-m", "uvicorn", "device.app.main:app", "--host", "0.0.0.0", "--port", "8001", "--reload", "--log-level", "warning"]
         p_dev_a = subprocess.Popen(cmd_dev_a, cwd=str(REPO_ROOT), env=env_dev_a)
         procs.append(("Device A (8001)", p_dev_a))
 
         print("[3/4] Starting Device B (Plant South) Node on http://localhost:8002 ...")
-        cmd_dev_b = [sys.executable, "-m", "uvicorn", "device.app.main:app", "--host", "0.0.0.0", "--port", "8002", "--log-level", "warning"]
+        cmd_dev_b = [sys.executable, "-m", "uvicorn", "device.app.main:app", "--host", "0.0.0.0", "--port", "8002", "--reload", "--log-level", "warning"]
         p_dev_b = subprocess.Popen(cmd_dev_b, cwd=str(REPO_ROOT), env=env_dev_b)
         procs.append(("Device B (8002)", p_dev_b))
 

@@ -1,8 +1,9 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useApp } from "@/lib/context";
 import { MOCK_CONFLICT } from "@/lib/mocks/fixtures";
+import { getConflicts, resolveConflict } from "@/lib/api";
 import type { ConflictRecord } from "@/lib/types";
 import StatusBadge from "@/components/StatusBadge";
 import {
@@ -23,16 +24,35 @@ export default function ConflictsPage() {
   const [conflict, setConflict] = useState<ConflictRecord>(MOCK_CONFLICT);
   const [actionNotice, setActionNotice] = useState<string | null>(null);
 
-  const handleAction = (action: "accept" | "escalate" | "restore") => {
+  useEffect(() => {
+    async function load() {
+      try {
+        const records = await getConflicts(deviceId);
+        if (records && records.length > 0) {
+          setConflict(records[0]);
+        }
+      } catch (e) {
+        console.warn("Conflicts fetch fallback:", e);
+      }
+    }
+    load();
+  }, [deviceId]);
+
+  const handleAction = async (action: "accept" | "escalate" | "restore") => {
+    try {
+      await resolveConflict(deviceId, conflict.id, action);
+    } catch (e) {
+      console.warn("Conflict resolve error:", e);
+    }
     if (action === "accept") {
       setConflict((prev) => ({ ...prev, status: "resolved" }));
-      setActionNotice("Winner accepted: 45 Nm (Cloud Bulletin Rev 12) committed to local index.");
+      setActionNotice("Winner accepted: 45 Nm (Cloud Directive Rev 12) committed to local index via Invariant I7.");
     } else if (action === "escalate") {
       setConflict((prev) => ({ ...prev, status: "escalated" }));
       setActionNotice("Escalated to Meera S. (Fleet Reliability Desk) for manual engineering arbitration.");
     } else {
       setConflict((prev) => ({ ...prev, status: "open" }));
-      setActionNotice("Restored earlier revision fork for local testing.");
+      setActionNotice("Restored earlier revision fork for local empirical testing.");
     }
     setTimeout(() => setActionNotice(null), 4000);
   };
@@ -107,6 +127,27 @@ export default function ConflictsPage() {
         <div className="font-mono text-sm text-[var(--color-muted)]">
           3 conflicting sources detected
         </div>
+      </div>
+
+      {/* Parametric Delta Highlight Bar */}
+      <div className="rounded-[2px] bg-[var(--color-surface-2)] border border-[var(--color-border)] p-3.5 flex items-center justify-between flex-wrap gap-2 font-mono text-sm">
+        <div className="flex items-center gap-3 flex-wrap">
+          <span className="text-xs uppercase text-[var(--color-muted)] font-bold tracking-wider">Parametric Delta:</span>
+          <span className="px-2 py-0.5 rounded bg-emerald-950/60 border border-emerald-500/80 text-emerald-400 font-bold">
+            +5 Nm Fleet Directive (45 Nm)
+          </span>
+          <span className="text-[var(--color-muted)]">vs</span>
+          <span className="px-2 py-0.5 rounded bg-amber-950/60 border border-amber-500/80 text-amber-400 font-bold">
+            +2 Nm Field Log (42 Nm)
+          </span>
+          <span className="text-[var(--color-muted)]">vs</span>
+          <span className="px-2 py-0.5 rounded bg-zinc-900 border border-zinc-700 text-zinc-400 line-through">
+            Baseline Manual (40 Nm)
+          </span>
+        </div>
+        <span className="text-xs text-[var(--color-accent)] font-bold uppercase tracking-wider accent-text">
+          RULE C2 CONTRADICTION ARBITRATED
+        </span>
       </div>
 
       {/* Three-Column Comparison */}

@@ -6,6 +6,7 @@ from fastapi import APIRouter, HTTPException, Query
 from pydantic import BaseModel, Field
 
 from device.app.api.search import SearchResponse, SearchService
+from device.app.api.router import SmartQueryRouter
 from device.app.embed.embedder import EdgeEmbedder
 from device.app.ingest.pipeline import IngestPipeline
 from device.app.memory.models import Memory
@@ -27,6 +28,7 @@ SHARDS_DIR.mkdir(parents=True, exist_ok=True)
 _embedder = EdgeEmbedder.get_instance()
 _store = QdrantEdgeMemoryStore(base_dir=SHARDS_DIR, embedder=_embedder)
 _search_service = SearchService(store=_store)
+_smart_router = SmartQueryRouter(store=_store, device_id=DEVICE_ID)
 _pipeline = IngestPipeline(store=_store, embedder=_embedder)
 
 
@@ -124,6 +126,34 @@ def get_device_info():
     }
 
 
+@router.get("/topology")
+def get_mesh_topology():
+    return {
+        "self": {
+            "device_id": DEVICE_ID,
+            "site_id": SITE_ID,
+            "port": DEVICE_PORT,
+            "status": "online",
+            "tier": 1,
+            "policy": "air_gapped_0_egress",
+        },
+        "peer": {
+            "device_id": _smart_router.peer_name,
+            "url": _smart_router.peer_url,
+            "transport": "Local Subnet WiFi P2P",
+            "status": "active",
+            "tier": 2,
+            "internet_egress": "0B",
+        },
+        "hub": {
+            "url": _smart_router.hub_url,
+            "transport": "Central Fleet Sync",
+            "status": "configured",
+            "tier": 3,
+        }
+    }
+
+
 @router.get("/search", response_model=SearchResponse)
 def search_memory(
     q: str = Query(..., description="Natural language search query"),
@@ -131,6 +161,7 @@ def search_memory(
     explain: bool = Query(True, description="Return branch ranks and explain details"),
     kind: str | None = Query(None, description="Optional kind filter"),
     asset_id: str | None = Query(None, description="Optional asset ID filter"),
+    allow_peer: bool = Query(True, description="Allow routing query to peer over local subnet WiFi"),
 ) -> SearchResponse:
     filters: dict[str, Any] = {}
     if kind and kind != "All Kinds":
@@ -138,11 +169,12 @@ def search_memory(
     if asset_id and asset_id != "All Assets":
         filters["asset_id"] = asset_id
 
-    return _search_service.execute_search(
+    return _smart_router.route_and_search(
         query=q,
         limit=limit,
         explain=explain,
         filters=filters if filters else None,
+        allow_peer_escalation=allow_peer,
     )
 
 

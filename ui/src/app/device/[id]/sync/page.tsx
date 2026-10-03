@@ -24,7 +24,30 @@ export default function SyncPage() {
   const [syncing, setSyncing] = useState(false);
   const [report, setReport] = useState<SyncReport>(MOCK_SYNC_REPORT);
   const [outbox, setOutbox] = useState<OutboxEntry[]>(MOCK_OUTBOX);
-  const [lastSyncTime, setLastSyncTime] = useState("2m ago");
+  const [lastSyncTime, setLastSyncTime] = useState("Just now");
+
+  const loadData = useCallback(async () => {
+    try {
+      const [entries, status] = await Promise.all([
+        getOutbox(deviceId),
+        getSyncStatus(deviceId),
+      ]);
+      if (entries && entries.length > 0) {
+        setOutbox(entries);
+      }
+      if (status?.last_sync) {
+        setLastSyncTime(status.last_sync);
+      }
+    } catch (e) {
+      console.warn("SyncPage fetch error:", e);
+    }
+  }, [deviceId]);
+
+  useEffect(() => {
+    loadData();
+    const interval = setInterval(loadData, 5000);
+    return () => clearInterval(interval);
+  }, [loadData]);
 
   const pendingCount = outbox.filter((o) => o.state === "pending").length;
 
@@ -35,20 +58,22 @@ export default function SyncPage() {
       const rep = await runSync(deviceId);
       setReport(rep);
       setLastSyncTime("Just now");
-      // Update outbox entries as synced
+      // Immediate optimistic update of outbox
       setOutbox((prev) =>
         prev.map((o) =>
           o.state === "pending"
-            ? { ...o, state: "synced", next_retry: "-" }
+            ? { ...o, state: "synced", next_retry: "Done" }
             : o
         )
       );
+      // Reload actual persisted data from ledger
+      setTimeout(loadData, 800);
     } catch {
-      // Mock fallback already handles this
+      // Handled by API fallback
     } finally {
       setSyncing(false);
     }
-  }, [deviceId, isOffline, syncing]);
+  }, [deviceId, isOffline, syncing, loadData]);
 
   const formatBytes = (bytes: number) => {
     if (bytes >= 1000000) return `${(bytes / 1000000).toFixed(2)} MB`;
