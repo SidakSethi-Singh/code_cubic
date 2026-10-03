@@ -4,7 +4,7 @@
 
 ---
 
-## ⚡ Executive Summary
+## Executive Summary
 
 Modern industrial facilities, field operations, and privacy-sensitive small businesses cannot afford cloud latency or data breach liability. **EdgeMind** delivers an air-gapped, offline-first AI memory system that runs 100% locally on edge devices (turbines, factory hubs, robotics, field laptops) with **0 external network sockets** during routine operations.
 
@@ -12,7 +12,7 @@ When edge devices need broader intelligence, EdgeMind's **Smart Query Router** c
 
 ---
 
-## 🏛 The 6 Architectural Pillars
+## The 6 Architectural Pillars
 
 Directly implementing the EdgeMind industrial blueprint:
 
@@ -48,7 +48,7 @@ Directly implementing the EdgeMind industrial blueprint:
 
 ---
 
-## 🛰 Network Topology & Service Matrix
+## Network Topology & Service Matrix
 
 EdgeMind operates 4 coordinated topology services:
 
@@ -61,7 +61,7 @@ EdgeMind operates 4 coordinated topology services:
 
 ---
 
-## 🚀 Quick Start Guide
+## Quick Start Guide
 
 ### Prerequisites
 - **Python:** 3.11+ (Python 3.11 – 3.14 verified)
@@ -97,7 +97,7 @@ All 4 services will boot and connect:
 
 ---
 
-## 🎬 Live Demo Walkthrough (The 6 Demo Beats)
+## Live Demo Walkthrough (The 6 Demo Beats)
 
 Open **[http://localhost:3000/device/device-a](http://localhost:3000/device/device-a)** in your browser:
 
@@ -143,7 +143,7 @@ Open **[http://localhost:3000/device/device-a](http://localhost:3000/device/devi
 
 ---
 
-## 🔒 Security & Policy Invariants
+## Security & Policy Invariants
 
 EdgeMind enforces three immutable safety invariants:
 
@@ -155,7 +155,7 @@ EdgeMind enforces three immutable safety invariants:
 
 ---
 
-## 📊 Proof & Performance Benchmarks
+## Proof & Performance Benchmarks
 
 ```
 [Search Latency]
@@ -173,7 +173,7 @@ EdgeMind enforces three immutable safety invariants:
 
 ---
 
-## 🛠 Tech Stack
+## Tech Stack
 
 - **Edge Runtime:** Python 3.11+, FastAPI, Uvicorn, Pydantic v2
 - **Vector Engine:** Qdrant Edge (`qdrant-edge-py` embedded Rust engine)
@@ -184,7 +184,7 @@ EdgeMind enforces three immutable safety invariants:
 
 ---
 
-## 🧪 Testing & Verification
+## Testing & Verification
 
 Run the automated test suite verifying edge memory store, hybrid fusion, policy engine, and CRDT sync:
 ```bash
@@ -198,6 +198,6 @@ cd ui && npm run build
 
 ---
 
-## 📄 License & Attribution
+## License & Attribution
 
 Designed and engineered for **Advanced Industrial Edge AI & Zero-Trust Infrastructure**. Open-source under the Apache 2.0 License.
