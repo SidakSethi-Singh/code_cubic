@@ -138,7 +138,7 @@ Open **[http://localhost:3000/device/device-a](http://localhost:3000/device/devi
 5. Click **Resolve Conflict** to commit the cryptographic resolution into the SQLite ledger.
 
 ### Beat 6: Fleet Hub Control Plane & Proof Benchmarks
-1. Open **Fleet Hub** (`/cloud`): Inspect live node heartbeats, sync inboxes, and global manuals.
+1. Open **Fleet Hub** (`/cloud`): Unlock with demo authorization key `edgemind2026`. Inspect live node heartbeats, sync inboxes, and global manuals.
 2. Open **Proof Benchmarks** (`/results`): Verify latency comparisons (4.2ms vs. 1,420ms cloud), 99.2% sync compression, and energy metrics.
 
 ---

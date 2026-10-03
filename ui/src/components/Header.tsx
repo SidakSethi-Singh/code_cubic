@@ -5,6 +5,7 @@ import { DEVICES } from "@/lib/types";
 import { Layers, ChevronDown, Wifi, WifiOff, Presentation, ShieldCheck, Server, X, Activity, Lock, Radio } from "lucide-react";
 import { useState } from "react";
 import { usePathname } from "next/navigation";
+import { lockCloudConsole } from "@/lib/cloud-auth";
 
 export default function Header() {
   const { deviceId, setDeviceId, isOffline, toggleLink, presenterMode, setPresenterMode } = useApp();
@@ -116,14 +117,25 @@ export default function Header() {
           </button>
 
           {isCloud ? (
-            <div className="flex items-center gap-2 px-3 py-1.5 rounded-[2px] bg-[var(--color-surface-2)] border border-[var(--color-border)]">
-              <div className="w-7 h-7 rounded-[2px] bg-[var(--color-accent-dim)] flex items-center justify-center text-[var(--color-accent)] font-mono font-bold text-sm accent-text accent-bg">
-                M
+            <div className="flex items-center gap-2">
+              <div className="flex items-center gap-2 px-3 py-1.5 rounded-[2px] bg-[var(--color-surface-2)] border border-[var(--color-border)]">
+                <div className="w-7 h-7 rounded-[2px] bg-[var(--color-accent-dim)] flex items-center justify-center text-[var(--color-accent)] font-mono font-bold text-sm accent-text accent-bg">
+                  M
+                </div>
+                <div className="flex flex-col">
+                  <span className="text-sm font-bold text-[var(--color-text)]">Meera S.</span>
+                  <span className="text-xs font-mono text-[var(--color-muted)]">Fleet Reliability</span>
+                </div>
               </div>
-              <div className="flex flex-col">
-                <span className="text-sm font-bold text-[var(--color-text)]">Meera S.</span>
-                <span className="text-xs font-mono text-[var(--color-muted)]">Fleet Reliability</span>
-              </div>
+
+              <button
+                onClick={() => lockCloudConsole()}
+                title="Lock Cloud Console and reset authorization session"
+                className="flex items-center gap-1.5 px-3 py-1.5 rounded-[2px] bg-[var(--color-surface-2)] border border-[var(--color-border)] font-mono text-xs text-[var(--color-muted)] hover:text-amber-400 hover:border-amber-500/60 transition-colors duration-120 cursor-pointer"
+              >
+                <Lock className="w-3.5 h-3.5" strokeWidth={1.5} />
+                <span>Lock console</span>
+              </button>
             </div>
           ) : device ? (
             <div className="flex items-center gap-2 px-3 py-1.5 rounded-[2px] bg-[var(--color-surface-2)] border border-[var(--color-border)]">
