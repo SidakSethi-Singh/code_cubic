@@ -15,6 +15,9 @@ export interface SearchAnswer {
   low_confidence: boolean;
   model_tag: string;
   latency_ms: number;
+  tokens_per_sec?: number;
+  total_tokens?: number;
+  isStreaming?: boolean;
 }
 
 export interface Citation {

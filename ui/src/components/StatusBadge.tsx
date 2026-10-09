@@ -1,81 +1,125 @@
 "use client";
 
-import { ArrowUpRight, Pause, Lock, Clock, Check, GitBranch, Split } from "lucide-react";
+import React from "react";
+import {
+  ArrowUpRight,
+  Pause,
+  Lock,
+  Clock,
+  Check,
+  GitBranch,
+  Split,
+  AlertTriangle,
+} from "lucide-react";
+import { GradientBadge, BadgeVariant } from "./shared/GradientBadge";
 
-type StatusType = "share" | "hold" | "local_only" | "pending" | "synced" | "conflict" | "superseded" | "disputed" | "active" | "open" | "resolved" | "escalated" | "failed";
-
-const CONFIG: Record<string, {
-  icon: React.ComponentType<{ className?: string; strokeWidth?: number }>;
-  className: string;
-}> = {
+const STATUS_CONFIG: Record<
+  string,
+  {
+    icon: React.ComponentType<{ className?: string; strokeWidth?: number }>;
+    variant: BadgeVariant;
+    label: string;
+    dot?: boolean;
+  }
+> = {
   share: {
     icon: ArrowUpRight,
-    className: "bg-[var(--color-accent)] text-[var(--color-accent-ink)] border-[var(--color-accent)]",
+    variant: "brand",
+    label: "SHARE",
   },
   hold: {
     icon: Pause,
-    className: "bg-transparent text-[var(--color-accent)] border-[var(--color-accent)]",
+    variant: "warning",
+    label: "HOLD",
   },
   local_only: {
     icon: Lock,
-    className: "bg-transparent text-[var(--color-muted)] border-[var(--color-muted)]",
+    variant: "neutral",
+    label: "LOCAL ONLY",
   },
   pending: {
     icon: Clock,
-    className: "bg-transparent text-[var(--color-accent)] border-[var(--color-accent)] border-dashed",
+    variant: "warning",
+    label: "PENDING",
+    dot: true,
   },
   synced: {
     icon: Check,
-    className: "bg-[var(--color-accent-dim)] text-[var(--color-accent)] border-transparent",
+    variant: "tier1",
+    label: "SYNCED",
   },
   conflict: {
     icon: GitBranch,
-    className: "bg-[var(--color-accent-dim)] text-[var(--color-accent)] border-l-[3px] border-l-[var(--color-accent)] border-t-0 border-r-0 border-b-0",
+    variant: "danger",
+    label: "CONFLICT",
+    dot: true,
   },
   superseded: {
     icon: Check,
-    className: "bg-transparent text-[var(--color-muted)] border-transparent line-through",
+    variant: "neutral",
+    label: "SUPERSEDED",
   },
   disputed: {
     icon: Split,
-    className: "bg-transparent text-[var(--color-accent)] border-[var(--color-accent)]",
+    variant: "warning",
+    label: "DISPUTED",
   },
   active: {
     icon: Check,
-    className: "bg-[var(--color-accent-dim)] text-[var(--color-accent)] border-transparent",
+    variant: "tier1",
+    label: "ACTIVE",
   },
   open: {
-    icon: Clock,
-    className: "bg-transparent text-[var(--color-accent)] border-[var(--color-accent)]",
+    icon: AlertTriangle,
+    variant: "danger",
+    label: "OPEN",
+    dot: true,
   },
   resolved: {
     icon: Check,
-    className: "bg-[var(--color-accent)] text-[var(--color-accent-ink)] border-[var(--color-accent)]",
+    variant: "tier1",
+    label: "RESOLVED",
   },
   escalated: {
     icon: ArrowUpRight,
-    className: "bg-transparent text-[var(--color-accent)] border-[var(--color-accent)] border-dashed",
+    variant: "warning",
+    label: "ESCALATED",
   },
   failed: {
     icon: Pause,
-    className: "bg-transparent text-[var(--color-muted)] border-[var(--color-muted)]",
+    variant: "danger",
+    label: "FAILED",
   },
 };
 
 interface StatusBadgeProps {
   status: string;
   label?: string;
+  size?: "sm" | "md";
 }
 
-export default function StatusBadge({ status, label }: StatusBadgeProps) {
-  const config = CONFIG[status] || CONFIG["active"];
+export default function StatusBadge({
+  status,
+  label,
+  size = "sm",
+}: StatusBadgeProps) {
+  const config = STATUS_CONFIG[status] || {
+    icon: Check,
+    variant: "neutral" as BadgeVariant,
+    label: status.replace(/_/g, " ").toUpperCase(),
+  };
+
   const Icon = config.icon;
-  const displayLabel = label || status.replace(/_/g, " ").toUpperCase();
+  const displayLabel = label || config.label;
 
   return (
-    <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full border text-xs font-mono font-bold transition-colors duration-120 accent-text accent-border ${config.className}`}>
-      <Icon className="w-3 h-3" strokeWidth={1.5} />
-      {displayLabel}
-    </span>
+    <GradientBadge
+      variant={config.variant}
+      size={size}
+      dot={config.dot}
+      icon={<Icon className="w-3 h-3" strokeWidth={1.7} />}
+    >
+      <span className="font-mono">{displayLabel}</span>
+    </GradientBadge>
   );
 }

@@ -11,7 +11,7 @@ export default function ResultsLayout({
   const { isOffline } = useApp();
 
   return (
-    <div className={`min-h-screen w-screen bg-[var(--color-bg)] flex flex-col ${isOffline ? "offline" : ""}`}>
+    <div className={`min-h-screen w-screen flex flex-col ${isOffline ? "airgap-active" : ""}`}>
       <PresenterStrip />
       <div className="flex-1 flex flex-col overflow-auto">
         {children}

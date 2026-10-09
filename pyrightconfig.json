@@ -1,0 +1,12 @@
+{
+  "include": [
+    "device",
+    "scripts"
+  ],
+  "pythonPath": "C:\\Python314\\python.exe",
+  "extraPaths": [
+    "c:\\Users\\sidak\\OneDrive\\Desktop\\Code Cubic",
+    "C:\\Users\\sidak\\AppData\\Roaming\\Python\\Python314\\site-packages",
+    "C:\\Python314\\Lib\\site-packages"
+  ]
+}

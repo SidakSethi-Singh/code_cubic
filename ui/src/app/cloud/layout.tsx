@@ -41,7 +41,7 @@ export default function CloudLayout({
 
   // Prevent flicker of protected console while reading sessionStorage
   if (isCheckingSession) {
-    return <div className="h-screen w-screen bg-[var(--color-bg)]" />;
+    return <div className="h-screen w-screen bg-slate-50" />;
   }
 
   // Route Protection: Unauthenticated requests render full-screen password gate
@@ -57,12 +57,12 @@ export default function CloudLayout({
 
   // Authenticated Cloud Console layout
   return (
-    <div className={`flex flex-col h-screen w-screen overflow-hidden ${isOffline ? "offline" : ""}`}>
+    <div className={`flex flex-col h-screen w-screen overflow-hidden ${isOffline ? "airgap-active" : ""}`}>
       <PresenterStrip />
       <Header />
-      <div className="flex flex-1 overflow-hidden">
+      <div className="flex flex-1 overflow-hidden relative">
         <Sidebar />
-        <main className="flex-1 overflow-auto bg-[var(--color-bg)] p-6">
+        <main className="flex-1 overflow-y-auto px-4 py-6 md:px-8 md:py-8 pb-24 md:pb-12">
           {children}
         </main>
       </div>

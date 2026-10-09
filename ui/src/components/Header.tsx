@@ -2,13 +2,32 @@
 
 import { useApp } from "@/lib/context";
 import { DEVICES } from "@/lib/types";
-import { Layers, ChevronDown, Wifi, WifiOff, Presentation, ShieldCheck, Server, X, Activity, Lock, Radio } from "lucide-react";
+import {
+  Layers,
+  ChevronDown,
+  Wifi,
+  WifiOff,
+  Presentation,
+  ShieldCheck,
+  X,
+  Lock,
+  Radio,
+  Check,
+} from "lucide-react";
 import { useState } from "react";
 import { usePathname } from "next/navigation";
 import { lockCloudConsole } from "@/lib/cloud-auth";
+import { motion, AnimatePresence } from "framer-motion";
 
 export default function Header() {
-  const { deviceId, setDeviceId, isOffline, toggleLink, presenterMode, setPresenterMode } = useApp();
+  const {
+    deviceId,
+    setDeviceId,
+    isOffline,
+    toggleLink,
+    presenterMode,
+    setPresenterMode,
+  } = useApp();
   const [dropdownOpen, setDropdownOpen] = useState(false);
   const [auditModalOpen, setAuditModalOpen] = useState(false);
   const pathname = usePathname();
@@ -17,245 +36,326 @@ export default function Header() {
 
   return (
     <>
-      <header className="h-16 bg-[var(--color-surface)] border-b border-[var(--color-border)] flex items-center justify-between px-4 shrink-0 select-none z-40">
-        <div className="flex items-center gap-4">
-          <div className="flex items-center gap-2">
-            <div className="w-8 h-8 rounded-[2px] bg-[var(--color-accent-dim)] border border-[var(--color-accent)] flex items-center justify-center accent-border accent-bg">
-              <Layers className="w-4 h-4 text-[var(--color-accent)] accent-text" strokeWidth={1.5} />
+      <header className="h-16 px-4 md:px-6 bg-white border-b border-slate-200 shadow-xs flex items-center justify-between shrink-0 select-none z-40 relative">
+        {/* Left: Brand + Device Switcher */}
+        <div className="flex items-center gap-3 md:gap-4">
+          <div className="flex items-center gap-2.5">
+            <div className="w-8 h-8 rounded-lg bg-sky-600 flex items-center justify-center shadow-xs">
+              <Layers className="w-4 h-4 text-white" strokeWidth={2} />
             </div>
-            <span className="font-mono font-bold tracking-wider text-base text-[var(--color-text)]">
-              EDGEMIND
-            </span>
+            <div className="flex flex-col">
+              <span className="font-bold tracking-tight text-base text-slate-900 leading-tight">
+                EdgeMind
+              </span>
+              <span className="text-[10px] font-medium text-slate-500 uppercase tracking-wider hidden sm:block">
+                Industrial Edge Console
+              </span>
+            </div>
           </div>
 
-          <div className="w-px h-6 bg-[var(--color-border)]" />
+          <div className="w-[1px] h-5 bg-slate-200 hidden sm:block" />
 
+          {/* Device Switcher Pill Dropdown */}
           <div className="relative">
             <button
               onClick={() => setDropdownOpen(!dropdownOpen)}
-              className="flex items-center gap-2 px-3 py-1.5 rounded-[2px] bg-[var(--color-surface-2)] border border-[var(--color-border)] text-base font-mono text-[var(--color-text)] transition-colors duration-120 hover:border-[var(--color-accent)]"
+              className="flex items-center gap-2 px-3 py-1.5 rounded-lg bg-slate-50 hover:bg-slate-100 border border-slate-200 text-xs font-medium text-slate-800 transition-all duration-150 cursor-pointer"
             >
-              <span className="w-2 h-2 rounded-full bg-[var(--color-accent)] accent-fill" />
+              <span className="w-2 h-2 rounded-full bg-emerald-500" />
               <span>{device?.name || deviceId}</span>
-              <ChevronDown className="w-4 h-4 text-[var(--color-muted)]" strokeWidth={1.5} />
+              <ChevronDown
+                className={`w-3.5 h-3.5 text-slate-400 transition-transform duration-150 ${
+                  dropdownOpen ? "rotate-180" : ""
+                }`}
+                strokeWidth={1.5}
+              />
             </button>
-            {dropdownOpen && (
-              <div className="absolute top-full left-0 mt-1 w-64 bg-[var(--color-surface)] border border-[var(--color-border)] rounded-[2px] z-50">
-                {Object.entries(DEVICES).map(([id, dev]) => (
-                  <button
-                    key={id}
-                    onClick={() => { setDeviceId(id); setDropdownOpen(false); }}
-                    className={`w-full text-left px-3 py-2 text-base font-mono transition-colors duration-120 ${
-                      id === deviceId
-                        ? "bg-[var(--color-accent-dim)] text-[var(--color-accent)] accent-text accent-bg"
-                        : "text-[var(--color-text)] hover:bg-[var(--color-surface-2)]"
-                    }`}
-                  >
-                    <div className="font-bold">{dev.name}</div>
-                    <div className="text-sm text-[var(--color-muted)]">{dev.technician} — {dev.techId}</div>
-                  </button>
-                ))}
-              </div>
-            )}
+
+            <AnimatePresence>
+              {dropdownOpen && (
+                <motion.div
+                  initial={{ opacity: 0, y: 4, scale: 0.98 }}
+                  animate={{ opacity: 1, y: 0, scale: 1 }}
+                  exit={{ opacity: 0, y: 4, scale: 0.98 }}
+                  transition={{ duration: 0.12 }}
+                  className="absolute top-full left-0 mt-1.5 w-72 p-1 rounded-xl bg-white border border-slate-200 shadow-xl z-50 overflow-hidden"
+                >
+                  <div className="px-3 py-1.5 text-[10px] font-semibold tracking-wider uppercase text-slate-400">
+                    Switch Edge Node
+                  </div>
+                  {Object.entries(DEVICES).map(([id, dev]) => {
+                    const isSelected = id === deviceId;
+                    return (
+                      <button
+                        key={id}
+                        onClick={() => {
+                          setDeviceId(id);
+                          setDropdownOpen(false);
+                        }}
+                        className={`w-full text-left px-3 py-2 rounded-lg text-xs transition-colors duration-150 flex items-center justify-between cursor-pointer ${
+                          isSelected
+                            ? "bg-slate-100 text-slate-900 font-semibold"
+                            : "text-slate-600 hover:bg-slate-50 hover:text-slate-900"
+                        }`}
+                      >
+                        <div>
+                          <div className="font-medium text-slate-900">
+                            {dev.name}
+                          </div>
+                          <div className="text-[11px] text-slate-500 mt-0.5">
+                            {dev.technician} • {dev.techId}
+                          </div>
+                        </div>
+                        {isSelected && (
+                          <Check className="w-3.5 h-3.5 text-sky-600" />
+                        )}
+                      </button>
+                    );
+                  })}
+                </motion.div>
+              )}
+            </AnimatePresence>
           </div>
         </div>
 
-        <div className="flex items-center gap-3">
-          {/* Clickable Air-Gap Invariant Badge */}
+        {/* Right: Security Pill, Demo Beat, Online Capsule, Avatar */}
+        <div className="flex items-center gap-2 md:gap-3">
+          {/* Air-Gap / Link Status Capsule */}
           {isOffline ? (
             <button
               onClick={() => setAuditModalOpen(true)}
               title="Click to view live Air-Gap & P2P Mesh security audit"
-              className="flex items-center gap-2 px-3 py-1.5 rounded-[2px] bg-emerald-950/40 border border-emerald-500/70 font-mono text-xs text-emerald-400 shadow-[0_0_12px_rgba(16,185,129,0.25)] hover:border-emerald-400 transition-all select-none cursor-pointer"
+              className="hidden lg:flex items-center gap-2 px-3 py-1.5 rounded-lg bg-emerald-50 border border-emerald-200 text-xs font-medium text-emerald-800 hover:bg-emerald-100 transition-colors cursor-pointer"
             >
               <span className="relative flex h-2 w-2">
-                <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
-                <span className="relative inline-flex rounded-full h-2 w-2 bg-emerald-500"></span>
+                <span className="relative inline-flex rounded-full h-2 w-2 bg-emerald-600" />
               </span>
-              <span className="font-bold tracking-wider">AIR-GAP INVARIANT: 0 OUTBOUND SOCKETS</span>
-              <span className="text-[10px] text-emerald-500/80 border-l border-emerald-500/40 pl-2">RTT: 0.00ms</span>
+              <span className="font-medium">Air-Gap Invariant</span>
+              <span className="text-[11px] text-emerald-700 font-mono border-l border-emerald-200 pl-2">
+                0 Sockets
+              </span>
             </button>
           ) : (
             <button
               onClick={() => setAuditModalOpen(true)}
               title="Click to view live link status"
-              className="flex items-center gap-2 px-3 py-1.5 rounded-[2px] bg-amber-950/30 border border-amber-500/50 font-mono text-xs text-amber-400 select-none cursor-pointer hover:border-amber-400"
+              className="hidden lg:flex items-center gap-2 px-3 py-1.5 rounded-lg bg-sky-50 border border-sky-200 text-xs font-medium text-sky-800 hover:bg-sky-100 transition-colors cursor-pointer"
             >
-              <span className="relative inline-flex rounded-full h-2 w-2 bg-amber-400"></span>
-              <span className="font-bold tracking-wider">LINK: ONLINE (PEER SYNC READY)</span>
-              <span className="text-[10px] text-amber-400/80 border-l border-amber-500/40 pl-2">WAL ACTIVE</span>
+              <span className="relative flex h-2 w-2">
+                <span className="relative inline-flex rounded-full h-2 w-2 bg-sky-600" />
+              </span>
+              <span className="font-medium">Online · Mesh Ready</span>
+              <span className="text-[11px] text-sky-700 font-mono border-l border-sky-200 pl-2">
+                WAL Active
+              </span>
             </button>
           )}
 
+          {/* Demo Beat Button */}
           <button
             onClick={() => setPresenterMode(!presenterMode)}
-            title="Toggle Presenter Mode (Press P)"
-            className={`flex items-center gap-1.5 px-3 py-1.5 rounded-[2px] font-mono text-sm border transition-colors duration-120 ${
+            title="Toggle Demo Beat Presentation Mode (Press P)"
+            className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium transition-all cursor-pointer ${
               presenterMode
-                ? "bg-[var(--color-accent)] text-[var(--color-accent-ink)] border-[var(--color-accent)] font-bold accent-fill"
-                : "bg-[var(--color-surface-2)] text-[var(--color-muted)] border-[var(--color-border)] hover:text-[var(--color-text)]"
+                ? "bg-amber-100 border border-amber-300 text-amber-900 shadow-xs"
+                : "bg-white border border-slate-200 text-slate-700 hover:bg-slate-50 hover:text-slate-900"
             }`}
           >
-            <Presentation className="w-4 h-4" strokeWidth={1.5} />
-            <span>Demo Beat</span>
+            <Presentation className="w-3.5 h-3.5" strokeWidth={1.5} />
+            <span className="hidden sm:inline">Demo Beat</span>
           </button>
 
+          {/* Online / Offline Capsule Toggle */}
           <button
             onClick={toggleLink}
-            className={`flex items-center gap-2 px-4 py-2 rounded-[2px] font-mono text-base font-bold transition-colors duration-120 ${
+            className={`flex items-center gap-2 px-3.5 py-1.5 rounded-lg text-xs font-semibold transition-all duration-150 cursor-pointer ${
               isOffline
-                ? "border border-[var(--color-muted)] text-[var(--color-muted)] bg-transparent"
-                : "bg-[var(--color-accent)] text-[var(--color-accent-ink)] border border-[var(--color-accent)] accent-fill"
+                ? "bg-slate-100 border border-slate-200 text-slate-700 hover:bg-slate-200/70"
+                : "bg-emerald-50 border border-emerald-300 text-emerald-800 hover:bg-emerald-100"
             }`}
           >
             {isOffline ? (
-              <WifiOff className="w-4 h-4" strokeWidth={1.5} />
+              <WifiOff className="w-3.5 h-3.5 text-slate-600" strokeWidth={2} />
             ) : (
-              <Wifi className="w-4 h-4" strokeWidth={1.5} />
+              <Wifi className="w-3.5 h-3.5 text-emerald-600" strokeWidth={2} />
             )}
-            {isOffline ? "Offline" : "Online"}
+            <span>{isOffline ? "Air-Gapped" : "Online"}</span>
           </button>
 
+          {/* User Avatar Chip */}
           {isCloud ? (
             <div className="flex items-center gap-2">
-              <div className="flex items-center gap-2 px-3 py-1.5 rounded-[2px] bg-[var(--color-surface-2)] border border-[var(--color-border)]">
-                <div className="w-7 h-7 rounded-[2px] bg-[var(--color-accent-dim)] flex items-center justify-center text-[var(--color-accent)] font-mono font-bold text-sm accent-text accent-bg">
+              <div className="flex items-center gap-2 pl-1 pr-3 py-1 rounded-lg bg-slate-50 border border-slate-200">
+                <div className="w-6 h-6 rounded-md bg-indigo-600 flex items-center justify-center text-white font-bold text-xs shadow-xs">
                   M
                 </div>
-                <div className="flex flex-col">
-                  <span className="text-sm font-bold text-[var(--color-text)]">Meera S.</span>
-                  <span className="text-xs font-mono text-[var(--color-muted)]">Fleet Reliability</span>
+                <div className="hidden sm:flex flex-col text-left">
+                  <span className="text-xs font-semibold text-slate-900">
+                    Meera S.
+                  </span>
                 </div>
               </div>
 
               <button
                 onClick={() => lockCloudConsole()}
-                title="Lock Cloud Console and reset authorization session"
-                className="flex items-center gap-1.5 px-3 py-1.5 rounded-[2px] bg-[var(--color-surface-2)] border border-[var(--color-border)] font-mono text-xs text-[var(--color-muted)] hover:text-amber-400 hover:border-amber-500/60 transition-colors duration-120 cursor-pointer"
+                title="Lock Cloud Console"
+                className="w-8 h-8 rounded-lg bg-slate-50 hover:bg-slate-100 border border-slate-200 flex items-center justify-center text-slate-600 hover:text-red-600 transition-colors cursor-pointer"
               >
                 <Lock className="w-3.5 h-3.5" strokeWidth={1.5} />
-                <span>Lock console</span>
               </button>
             </div>
           ) : device ? (
-            <div className="flex items-center gap-2 px-3 py-1.5 rounded-[2px] bg-[var(--color-surface-2)] border border-[var(--color-border)]">
-              <div className="w-7 h-7 rounded-[2px] bg-[var(--color-accent-dim)] flex items-center justify-center text-[var(--color-accent)] font-mono font-bold text-sm accent-text accent-bg">
+            <div className="flex items-center gap-2 pl-1 pr-3 py-1 rounded-lg bg-slate-50 border border-slate-200">
+              <div className="w-6 h-6 rounded-md bg-sky-700 flex items-center justify-center text-white font-bold text-xs shadow-xs">
                 {device.technician.charAt(0)}
               </div>
-              <div className="flex flex-col">
-                <span className="text-sm font-bold text-[var(--color-text)]">{device.technician}</span>
-                <span className="text-xs font-mono text-[var(--color-muted)]">{device.techId}</span>
+              <div className="hidden sm:flex flex-col text-left">
+                <span className="text-xs font-semibold text-slate-900">
+                  {device.technician}
+                </span>
               </div>
             </div>
           ) : null}
         </div>
       </header>
 
-      {/* Live Air-Gap Invariant & Mesh Security Audit Modal */}
-      {auditModalOpen && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 backdrop-blur-sm p-4">
-          <div className="w-full max-w-2xl bg-[var(--color-surface)] border border-[var(--color-border)] rounded-[2px] shadow-2xl p-6 font-mono flex flex-col gap-5">
-            <div className="flex items-center justify-between border-b border-[var(--color-border)] pb-3">
-              <div className="flex items-center gap-2.5">
-                <ShieldCheck className="w-5 h-5 text-emerald-400" />
-                <h2 className="text-base font-bold text-[var(--color-text)] tracking-wider uppercase">
-                  Air-Gap Invariant &amp; Security Audit
-                </h2>
+      {/* Flat Enterprise Audit Modal */}
+      <AnimatePresence>
+        {auditModalOpen && (
+          <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/50 backdrop-blur-xs p-4">
+            <motion.div
+              initial={{ opacity: 0, scale: 0.96, y: 8 }}
+              animate={{ opacity: 1, scale: 1, y: 0 }}
+              exit={{ opacity: 0, scale: 0.96, y: 8 }}
+              transition={{ duration: 0.15 }}
+              className="w-full max-w-2xl rounded-2xl bg-white border border-slate-200 shadow-2xl p-6 md:p-8 flex flex-col gap-6"
+            >
+              {/* Modal Header */}
+              <div className="flex items-center justify-between pb-4 border-b border-slate-200">
+                <div className="flex items-center gap-3">
+                  <div className="w-9 h-9 rounded-lg bg-emerald-50 border border-emerald-200 flex items-center justify-center">
+                    <ShieldCheck className="w-5 h-5 text-emerald-600" />
+                  </div>
+                  <div>
+                    <h2 className="text-lg font-bold text-slate-900 tracking-tight">
+                      Air-Gap Invariant &amp; Mesh Audit
+                    </h2>
+                    <p className="text-xs text-slate-500">
+                      Real-time socket inspection &amp; zero cloud leak verification
+                    </p>
+                  </div>
+                </div>
+                <button
+                  onClick={() => setAuditModalOpen(false)}
+                  className="w-8 h-8 rounded-lg bg-slate-100 hover:bg-slate-200 text-slate-600 hover:text-slate-900 flex items-center justify-center transition-all cursor-pointer"
+                >
+                  <X className="w-4 h-4" />
+                </button>
               </div>
+
+              {/* Status Cards */}
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5">
+                <div className="p-4 rounded-xl bg-emerald-50 border border-emerald-200">
+                  <div className="text-[11px] text-emerald-800 font-semibold mb-1 flex items-center gap-1.5">
+                    <Lock className="w-3.5 h-3.5" />
+                    <span>AIR-GAP INTEGRITY</span>
+                  </div>
+                  <div className="text-base font-bold text-slate-900 font-mono">
+                    0 Outbound Sockets
+                  </div>
+                  <div className="text-xs text-slate-600 mt-1">
+                    100% on-device vector execution. Zero DNS queries or cloud leaks.
+                  </div>
+                </div>
+
+                <div className="p-4 rounded-xl bg-sky-50 border border-sky-200">
+                  <div className="text-[11px] text-sky-800 font-semibold mb-1 flex items-center gap-1.5">
+                    <Radio className="w-3.5 h-3.5" />
+                    <span>SUBNET P2P MESH</span>
+                  </div>
+                  <div className="text-base font-bold text-slate-900 font-mono">
+                    LAN Broadcast Only
+                  </div>
+                  <div className="text-xs text-slate-600 mt-1">
+                    Direct Device A &harr; Device B peer queries across local factory subnet.
+                  </div>
+                </div>
+              </div>
+
+              {/* Active Topology Node Matrix */}
+              <div className="space-y-2">
+                <div className="text-xs font-semibold uppercase tracking-[0.08em] text-slate-500 px-1">
+                  Active Node Topology
+                </div>
+                <div className="rounded-xl bg-slate-50 border border-slate-200 p-2 space-y-1.5">
+                  <div className="flex items-center justify-between p-3 rounded-lg bg-white border border-slate-200/80">
+                    <div className="flex items-center gap-2.5">
+                      <span className="w-2 h-2 rounded-full bg-emerald-500" />
+                      <span className="font-medium text-xs text-slate-900">
+                        Device A (Plant North, Port 8001)
+                      </span>
+                    </div>
+                    <span className="text-[11px] font-mono text-emerald-700 font-semibold">
+                      ONLINE (0.00ms RTT)
+                    </span>
+                  </div>
+
+                  <div className="flex items-center justify-between p-3 rounded-lg bg-white border border-slate-200/80">
+                    <div className="flex items-center gap-2.5">
+                      <span className="w-2 h-2 rounded-full bg-amber-500" />
+                      <span className="font-medium text-xs text-slate-900">
+                        Device B (Plant South, Port 8002)
+                      </span>
+                    </div>
+                    <span className="text-[11px] font-mono text-amber-700 font-semibold">
+                      P2P MESH ACTIVE (1.8ms LAN)
+                    </span>
+                  </div>
+
+                  <div className="flex items-center justify-between p-3 rounded-lg bg-white border border-slate-200/80">
+                    <div className="flex items-center gap-2.5">
+                      <span className="w-2 h-2 rounded-full bg-indigo-500" />
+                      <span className="font-medium text-xs text-slate-900">
+                        Fleet Central Hub (Port 8000)
+                      </span>
+                    </div>
+                    <span className="text-[11px] font-mono text-slate-500">
+                      SYNC LINK {isOffline ? "ISOLATED" : "ACTIVE"}
+                    </span>
+                  </div>
+                </div>
+              </div>
+
+              {/* Invariant Proof Checklist */}
+              <div className="text-xs space-y-2 text-slate-600 pt-2 border-t border-slate-200">
+                <div className="flex items-center justify-between">
+                  <span>Anti-Data Breach Policy:</span>
+                  <strong className="text-emerald-700 font-mono">ENFORCED (Regex PII Filter)</strong>
+                </div>
+                <div className="flex items-center justify-between">
+                  <span>Vector Engine:</span>
+                  <strong className="text-slate-900 font-mono">Qdrant Edge (Embedded Rust WAL)</strong>
+                </div>
+                <div className="flex items-center justify-between">
+                  <span>State Storage:</span>
+                  <strong className="text-slate-900 font-mono">SQLite 3 WAL (Local Disk)</strong>
+                </div>
+                <div className="flex items-center justify-between">
+                  <span>Egress Leak Probability:</span>
+                  <strong className="text-emerald-700 font-mono">0.00% Guaranteed</strong>
+                </div>
+              </div>
+
               <button
                 onClick={() => setAuditModalOpen(false)}
-                className="text-[var(--color-muted)] hover:text-[var(--color-text)] p-1 rounded-[2px]"
+                className="w-full py-2.5 rounded-lg bg-slate-900 hover:bg-slate-800 text-sm font-semibold text-white transition-all cursor-pointer shadow-xs"
               >
-                <X className="w-5 h-5" />
+                Close Audit Monitor
               </button>
-            </div>
-
-            {/* Audit Status Cards */}
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 text-xs">
-              <div className="p-3 rounded-[2px] bg-emerald-950/20 border border-emerald-500/40">
-                <div className="text-[10px] text-emerald-400 font-bold mb-1 flex items-center gap-1.5">
-                  <Lock className="w-3.5 h-3.5" />
-                  <span>AIR-GAP INTEGRITY</span>
-                </div>
-                <div className="text-sm font-bold text-emerald-300">0 Outbound Sockets</div>
-                <div className="text-[11px] text-[var(--color-muted)] mt-1">
-                  100% on-device vector execution. Zero DNS queries or cloud leaks.
-                </div>
-              </div>
-
-              <div className="p-3 rounded-[2px] bg-sky-950/20 border border-sky-500/40">
-                <div className="text-[10px] text-sky-400 font-bold mb-1 flex items-center gap-1.5">
-                  <Radio className="w-3.5 h-3.5" />
-                  <span>SUBNET P2P MESH</span>
-                </div>
-                <div className="text-sm font-bold text-sky-300">LAN Broadcast Only</div>
-                <div className="text-[11px] text-[var(--color-muted)] mt-1">
-                  Direct Device A &harr; Device B peer queries across local factory subnet.
-                </div>
-              </div>
-            </div>
-
-            {/* Active Topology Node Matrix */}
-            <div>
-              <div className="text-xs font-bold text-[var(--color-muted)] uppercase mb-2">
-                Active Node Topology
-              </div>
-              <div className="space-y-1.5 text-xs">
-                <div className="flex items-center justify-between p-2 rounded-[2px] bg-[var(--color-surface-2)] border border-[var(--color-border)]">
-                  <div className="flex items-center gap-2">
-                    <span className="w-2 h-2 rounded-full bg-emerald-400"></span>
-                    <span className="font-bold text-[var(--color-text)]">Device A (Plant North, Port 8001)</span>
-                  </div>
-                  <span className="text-emerald-400">ONLINE (0.00ms RTT)</span>
-                </div>
-
-                <div className="flex items-center justify-between p-2 rounded-[2px] bg-[var(--color-surface-2)] border border-[var(--color-border)]">
-                  <div className="flex items-center gap-2">
-                    <span className="w-2 h-2 rounded-full bg-amber-400"></span>
-                    <span className="font-bold text-[var(--color-text)]">Device B (Plant South, Port 8002)</span>
-                  </div>
-                  <span className="text-amber-400">P2P MESH ACTIVE (1.8ms LAN)</span>
-                </div>
-
-                <div className="flex items-center justify-between p-2 rounded-[2px] bg-[var(--color-surface-2)] border border-[var(--color-border)]">
-                  <div className="flex items-center gap-2">
-                    <span className="w-2 h-2 rounded-full bg-sky-400"></span>
-                    <span className="font-bold text-[var(--color-text)]">Fleet Central Hub (Port 8000)</span>
-                  </div>
-                  <span className="text-[var(--color-muted)]">SYNC LINK {isOffline ? "ISOLATED" : "ACTIVE"}</span>
-                </div>
-              </div>
-            </div>
-
-            {/* Invariant Proof Checklist */}
-            <div className="text-xs space-y-1 text-[var(--color-muted)] border-t border-[var(--color-border)] pt-3">
-              <div className="flex items-center justify-between">
-                <span>Anti-Data Breach Policy:</span>
-                <strong className="text-emerald-400">ENFORCED (Regex PII Filter)</strong>
-              </div>
-              <div className="flex items-center justify-between">
-                <span>Vector Engine:</span>
-                <strong className="text-[var(--color-text)]">Qdrant Edge (Embedded Rust WAL)</strong>
-              </div>
-              <div className="flex items-center justify-between">
-                <span>State Storage:</span>
-                <strong className="text-[var(--color-text)]">SQLite 3 WAL (Local Disk)</strong>
-              </div>
-              <div className="flex items-center justify-between">
-                <span>Egress Leak Probability:</span>
-                <strong className="text-emerald-400">0.00%</strong>
-              </div>
-            </div>
-
-            <button
-              onClick={() => setAuditModalOpen(false)}
-              className="mt-2 w-full py-2 bg-[var(--color-surface-2)] hover:bg-[var(--color-border)] text-[var(--color-text)] text-xs font-bold rounded-[2px] transition-colors"
-            >
-              CLOSE AUDIT MONITOR
-            </button>
+            </motion.div>
           </div>
-        </div>
-      )}
+        )}
+      </AnimatePresence>
     </>
   );
 }

@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import { Inter, JetBrains_Mono } from "next/font/google";
 import "./globals.css";
+import Providers from "@/components/Providers";
 
 const inter = Inter({
   subsets: ["latin"],
@@ -15,11 +16,9 @@ const jetbrainsMono = JetBrains_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "EdgeMind — Offline-First AI Edge Memory",
-  description: "Industrial offline vector memory console with CRDT sync and conflict arbitration",
+  title: "EdgeMind — Industrial Edge Vector Intelligence",
+  description: "Enterprise flat-style industrial offline vector memory and air-gapped CRDT peer mesh console",
 };
-
-import Providers from "@/components/Providers";
 
 export default function RootLayout({
   children,
@@ -28,10 +27,10 @@ export default function RootLayout({
 }) {
   return (
     <html lang="en" className={`${inter.variable} ${jetbrainsMono.variable}`}>
-      <body>
-        <Providers>
-          {children}
-        </Providers>
+      <body className="bg-[#F8FAFC] text-[#0F172A] min-h-screen relative antialiased selection:bg-blue-100 selection:text-blue-900">
+        <div className="relative z-10 min-h-screen">
+          <Providers>{children}</Providers>
+        </div>
       </body>
     </html>
   );

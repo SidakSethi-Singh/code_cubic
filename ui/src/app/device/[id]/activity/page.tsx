@@ -1,9 +1,13 @@
 "use client";
 
 import { useState } from "react";
-import { useApp } from "@/lib/context";
 import { MOCK_EVENTS } from "@/lib/mocks/fixtures";
 import type { ActivityEvent } from "@/lib/types";
+import {
+  GradientBadge,
+  PageHeader,
+  SegmentedControl,
+} from "@/components/shared";
 import {
   Activity,
   Play,
@@ -13,12 +17,10 @@ import {
   ArrowUpRight,
   ArrowDownLeft,
   GitBranch,
-  Filter,
 } from "lucide-react";
 
 export default function ActivityPage() {
-  const { deviceId } = useApp();
-  const [events, setEvents] = useState<ActivityEvent[]>(MOCK_EVENTS);
+  const [events] = useState<ActivityEvent[]>(MOCK_EVENTS);
   const [filter, setFilter] = useState<string>("all");
   const [isPaused, setIsPaused] = useState<boolean>(false);
 
@@ -30,133 +32,166 @@ export default function ActivityPage() {
   const getEventIcon = (type: string) => {
     switch (type) {
       case "ingest":
-        return <Database className="w-4 h-4 text-[var(--color-accent)] accent-text" strokeWidth={1.5} />;
+        return {
+          icon: <Database className="w-4 h-4 text-emerald-700" strokeWidth={2} />,
+          bg: "bg-emerald-50 border border-emerald-200",
+        };
       case "decision":
-        return <Shield className="w-4 h-4 text-[var(--color-accent)] accent-text" strokeWidth={1.5} />;
+        return {
+          icon: <Shield className="w-4 h-4 text-amber-700" strokeWidth={2} />,
+          bg: "bg-amber-50 border border-amber-200",
+        };
       case "push":
-        return <ArrowUpRight className="w-4 h-4 text-[var(--color-accent)] accent-text" strokeWidth={1.5} />;
+        return {
+          icon: <ArrowUpRight className="w-4 h-4 text-sky-700" strokeWidth={2} />,
+          bg: "bg-sky-50 border border-sky-200",
+        };
       case "pull":
-        return <ArrowDownLeft className="w-4 h-4 text-[var(--color-accent)] accent-text" strokeWidth={1.5} />;
+        return {
+          icon: <ArrowDownLeft className="w-4 h-4 text-indigo-700" strokeWidth={2} />,
+          bg: "bg-indigo-50 border border-indigo-200",
+        };
       case "conflict":
-        return <GitBranch className="w-4 h-4 text-[var(--color-accent)] accent-text" strokeWidth={1.5} />;
+        return {
+          icon: <GitBranch className="w-4 h-4 text-rose-700" strokeWidth={2} />,
+          bg: "bg-rose-50 border border-rose-200",
+        };
       default:
-        return <Activity className="w-4 h-4 text-[var(--color-accent)] accent-text" strokeWidth={1.5} />;
+        return {
+          icon: <Activity className="w-4 h-4 text-slate-600" strokeWidth={2} />,
+          bg: "bg-slate-100 border border-slate-200",
+        };
     }
   };
 
   const formatTimestamp = (ts: string) => {
     try {
       const date = new Date(ts);
-      return date.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit", second: "2-digit", hour12: false });
+      return date.toLocaleTimeString([], {
+        hour: "2-digit",
+        minute: "2-digit",
+        second: "2-digit",
+        hour12: false,
+      });
     } catch {
       return ts;
     }
   };
 
   return (
-    <div className="flex flex-col gap-6 max-w-5xl">
-      {/* Title & Controls */}
-      <div className="flex items-center justify-between">
-        <div>
-          <h1 className="text-2xl font-bold font-mono text-[var(--color-text)]">
-            Activity Stream
-          </h1>
-          <p className="text-base text-[var(--color-muted)] mt-1">
-            Real-time WAL events, policy decisions, and mesh synchronization
-          </p>
-        </div>
-
-        <button
-          onClick={() => setIsPaused(!isPaused)}
-          className={`flex items-center gap-2 px-4 py-2 rounded-[2px] font-mono text-sm border transition-colors duration-120 ${
-            isPaused
-              ? "bg-[var(--color-accent)] text-[var(--color-accent-ink)] border-[var(--color-accent)] font-bold accent-fill"
-              : "bg-[var(--color-surface)] text-[var(--color-text)] border-[var(--color-border)] hover:border-[var(--color-muted)]"
-          }`}
-        >
-          {isPaused ? (
-            <>
-              <Play className="w-4 h-4" strokeWidth={1.5} />
-              <span>Resume Stream</span>
-            </>
-          ) : (
-            <>
-              <Pause className="w-4 h-4" strokeWidth={1.5} />
-              <span>Pause Stream</span>
-            </>
-          )}
-        </button>
-      </div>
-
-      {/* Filter Chips */}
-      <div className="flex items-center gap-2 flex-wrap">
-        <Filter className="w-4 h-4 text-[var(--color-muted)] mr-1" strokeWidth={1.5} />
-        {["all", "ingest", "decision", "push", "pull", "conflict"].map((f) => (
+    <div className="flex flex-col gap-6 max-w-5xl mx-auto pb-16">
+      {/* Page Header */}
+      <PageHeader
+        category="Real-Time Node Telemetry"
+        title="Activity Stream"
+        subtitle="Real-time WAL events, policy decisions, and peer mesh replication"
+        badge={
+          <GradientBadge variant="neutral" size="sm" dot>
+            WAL Observer Active
+          </GradientBadge>
+        }
+        actions={
           <button
-            key={f}
-            onClick={() => setFilter(f)}
-            className={`px-3 py-1.5 rounded-[2px] font-mono text-sm transition-colors duration-120 border ${
-              filter === f
-                ? "bg-[var(--color-accent-dim)] text-[var(--color-accent)] border-[var(--color-accent)] font-bold accent-border accent-bg accent-text"
-                : "bg-[var(--color-surface)] text-[var(--color-muted)] border-[var(--color-border)] hover:text-[var(--color-text)] hover:border-[var(--color-muted)]"
+            onClick={() => setIsPaused(!isPaused)}
+            className={`h-9 px-3.5 rounded-lg text-xs font-semibold transition-all flex items-center gap-1.5 cursor-pointer shadow-2xs ${
+              isPaused
+                ? "bg-amber-600 hover:bg-amber-700 text-white"
+                : "bg-white hover:bg-slate-50 border border-slate-200 text-slate-700"
             }`}
           >
-            {f.toUpperCase()}
+            {isPaused ? (
+              <>
+                <Play className="w-3.5 h-3.5" strokeWidth={2} />
+                <span>Resume Stream</span>
+              </>
+            ) : (
+              <>
+                <Pause className="w-3.5 h-3.5" strokeWidth={2} />
+                <span>Pause Stream</span>
+              </>
+            )}
           </button>
-        ))}
+        }
+      />
+
+      {/* Filter Segmented Control */}
+      <div className="flex items-center gap-3 overflow-x-auto pb-1">
+        <span className="text-[11px] font-semibold uppercase tracking-wider text-slate-400">
+          Event Type
+        </span>
+        <SegmentedControl
+          id="activity-filter"
+          size="sm"
+          value={filter}
+          onChange={setFilter}
+          options={[
+            { value: "all", label: "All" },
+            { value: "ingest", label: "Ingest" },
+            { value: "decision", label: "Decision" },
+            { value: "push", label: "Push" },
+            { value: "pull", label: "Pull" },
+            { value: "conflict", label: "Conflict" },
+          ]}
+        />
       </div>
 
       {/* Timeline Stream */}
-      <div className="rounded-[2px] bg-[var(--color-surface)] border border-[var(--color-border)] p-4">
+      <div className="rounded-xl bg-white border border-slate-200 shadow-sm overflow-hidden">
         {filteredEvents.length === 0 ? (
-          <div className="py-12 text-center font-mono text-sm text-[var(--color-muted)]">
-            No events match the selected filter.
+          <div className="py-16 text-center text-sm text-slate-400">
+            No activity events matching the current filter.
           </div>
         ) : (
-          <div className="space-y-1">
-            {filteredEvents.map((evt, idx) => (
-              <div
-                key={evt.id}
-                className="flex items-start gap-4 p-3 rounded-[2px] hover:bg-[var(--color-surface-2)] transition-colors duration-120 border-b border-[var(--color-border)] last:border-b-0"
-              >
-                {/* Event Type Icon */}
-                <div className="w-8 h-8 rounded-[2px] bg-[var(--color-accent-dim)] border border-[var(--color-border)] flex items-center justify-center shrink-0 mt-0.5 accent-bg">
-                  {getEventIcon(evt.type)}
-                </div>
+          <div className="divide-y divide-slate-100">
+            {filteredEvents.map((evt) => {
+              const iconMeta = getEventIcon(evt.type);
 
-                {/* Event Content */}
-                <div className="flex-1 min-w-0">
-                  <div className="flex items-center gap-2 mb-1">
-                    <span className="font-mono text-xs font-bold uppercase tracking-wider text-[var(--color-accent)] accent-text">
-                      {evt.type}
-                    </span>
-                    <span className="text-[var(--color-border)]">·</span>
-                    <span className="font-mono text-xs text-[var(--color-muted)]">
-                      {evt.id}
-                    </span>
-                    {evt.mem_id && (
-                      <>
-                        <span className="text-[var(--color-border)]">·</span>
-                        <span className="font-mono text-xs px-1.5 py-0.2 rounded-[2px] bg-[var(--color-surface-2)] border border-[var(--color-border)] text-[var(--color-text)]">
-                          {evt.mem_id}
-                        </span>
-                      </>
-                    )}
+              return (
+                <div
+                  key={evt.id}
+                  className="flex items-start gap-3.5 p-4 md:p-4.5 hover:bg-slate-50 transition-colors"
+                >
+                  {/* Event Type Icon */}
+                  <div
+                    className={`w-8 h-8 rounded-lg ${iconMeta.bg} flex items-center justify-center shrink-0 shadow-2xs mt-0.5`}
+                  >
+                    {iconMeta.icon}
                   </div>
-                  <h4 className="font-sans font-bold text-base text-[var(--color-text)]">
-                    {evt.title}
-                  </h4>
-                  <p className="font-sans text-sm text-[var(--color-muted)] mt-0.5">
-                    {evt.detail}
-                  </p>
-                </div>
 
-                {/* Timestamp */}
-                <div className="font-mono text-xs text-[var(--color-muted)] shrink-0 text-right">
-                  {formatTimestamp(evt.timestamp)}
+                  {/* Event Content */}
+                  <div className="flex-1 min-w-0">
+                    <div className="flex items-center gap-2 mb-1 flex-wrap">
+                      <span className="text-xs font-semibold uppercase tracking-wider text-sky-800">
+                        {evt.type}
+                      </span>
+                      <span className="text-slate-300 text-xs">•</span>
+                      <span className="font-mono text-xs text-slate-400">
+                        {evt.id}
+                      </span>
+                      {evt.mem_id && (
+                        <>
+                          <span className="text-slate-300 text-xs">•</span>
+                          <span className="font-mono text-[11px] px-2 py-0.5 rounded-md bg-slate-100 border border-slate-200 text-slate-700 font-semibold">
+                            {evt.mem_id}
+                          </span>
+                        </>
+                      )}
+                    </div>
+                    <h4 className="text-sm font-semibold text-slate-900">
+                      {evt.title}
+                    </h4>
+                    <p className="text-xs text-slate-600 mt-0.5 leading-relaxed">
+                      {evt.detail}
+                    </p>
+                  </div>
+
+                  {/* Timestamp */}
+                  <div className="font-mono text-xs text-slate-400 shrink-0 text-right">
+                    {formatTimestamp(evt.timestamp)}
+                  </div>
                 </div>
-              </div>
-            ))}
+              );
+            })}
           </div>
         )}
       </div>

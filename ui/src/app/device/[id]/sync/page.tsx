@@ -7,17 +7,20 @@ import type { SyncReport, OutboxEntry } from "@/lib/types";
 import { MOCK_SYNC_REPORT, MOCK_OUTBOX } from "@/lib/mocks/fixtures";
 import StatusBadge from "@/components/StatusBadge";
 import {
+  GlassCard,
+  GradientBadge,
+  PageHeader,
+} from "@/components/shared";
+import {
   Wifi,
   WifiOff,
   RefreshCw,
-  ShieldCheck,
   ArrowUpRight,
   Pause,
   ArrowDownLeft,
-  CheckCircle2,
   HardDrive,
-  Info,
 } from "lucide-react";
+import { motion } from "framer-motion";
 
 export default function SyncPage() {
   const { deviceId, isOffline, toggleLink } = useApp();
@@ -44,9 +47,14 @@ export default function SyncPage() {
   }, [deviceId]);
 
   useEffect(() => {
-    loadData();
+    const timer = setTimeout(() => {
+      loadData();
+    }, 0);
     const interval = setInterval(loadData, 5000);
-    return () => clearInterval(interval);
+    return () => {
+      clearTimeout(timer);
+      clearInterval(interval);
+    };
   }, [loadData]);
 
   const pendingCount = outbox.filter((o) => o.state === "pending").length;
@@ -58,7 +66,6 @@ export default function SyncPage() {
       const rep = await runSync(deviceId);
       setReport(rep);
       setLastSyncTime("Just now");
-      // Immediate optimistic update of outbox
       setOutbox((prev) =>
         prev.map((o) =>
           o.state === "pending"
@@ -66,7 +73,6 @@ export default function SyncPage() {
             : o
         )
       );
-      // Reload actual persisted data from ledger
       setTimeout(loadData, 800);
     } catch {
       // Handled by API fallback
@@ -82,322 +88,313 @@ export default function SyncPage() {
   };
 
   return (
-    <div className="flex flex-col gap-6 max-w-6xl pb-10">
-      {/* Title & Header */}
-      <div className="flex items-center justify-between">
-        <div>
-          <h1 className="text-2xl font-bold font-mono text-[var(--color-text)]">
-            Sync Center
-          </h1>
-          <p className="text-base text-[var(--color-muted)] mt-1">
-            Selective CRDT replication with local policy gating
-          </p>
-        </div>
-        <div className="flex items-center gap-3">
-          <div className="flex items-center gap-2 px-3 py-1.5 rounded-[2px] bg-[var(--color-surface)] border border-[var(--color-border)] font-mono text-sm">
-            <ShieldCheck
-              className="w-4 h-4 text-[var(--color-accent)] accent-text"
-              strokeWidth={1.5}
-            />
-            <span className="text-[var(--color-muted)]">Crash-safe WAL:</span>
-            <span className="font-bold text-[var(--color-accent)] accent-text">
-              {pendingCount} uncommitted
-            </span>
-          </div>
-        </div>
-      </div>
+    <div className="flex flex-col gap-6 max-w-6xl mx-auto pb-16">
+      {/* Page Header */}
+      <PageHeader
+        category="CRDT Replication &amp; Air-Gap Policy Engine"
+        title="Sync Center"
+        subtitle="Selective CRDT replication with local policy gating and bandwidth reduction"
+        badge={
+          <GradientBadge variant="neutral" size="sm">
+            Crash-Safe WAL: {pendingCount} Pending
+          </GradientBadge>
+        }
+      />
 
       {/* Control Bar: Link Toggle + Sync Action + Last Sync */}
-      <div className="rounded-[2px] bg-[var(--color-surface)] border border-[var(--color-border)] p-4 flex items-center justify-between flex-wrap gap-4">
-        <div className="flex items-center gap-4">
-          {/* Big Link Toggle */}
+      <GlassCard className="p-5 flex flex-col md:flex-row items-stretch md:items-center justify-between gap-4">
+        <div className="flex items-center gap-4 flex-wrap">
+          {/* Link Toggle Button */}
           <button
             onClick={toggleLink}
-            className={`flex items-center gap-3 px-5 py-3 rounded-[2px] font-mono font-bold text-base transition-colors duration-120 border ${
+            className={`flex items-center gap-2.5 px-4 py-2.5 rounded-lg font-semibold text-xs transition-all duration-150 cursor-pointer ${
               isOffline
-                ? "border-[var(--color-muted)] text-[var(--color-muted)] bg-transparent hover:border-[var(--color-text)]"
-                : "bg-[var(--color-accent)] text-[var(--color-accent-ink)] border-[var(--color-accent)] accent-fill"
+                ? "bg-slate-100 border border-slate-200 text-slate-700 hover:bg-slate-200"
+                : "bg-emerald-50 border border-emerald-300 text-emerald-800"
             }`}
           >
             {isOffline ? (
-              <WifiOff className="w-5 h-5" strokeWidth={1.5} />
+              <WifiOff className="w-4 h-4" strokeWidth={2} />
             ) : (
-              <Wifi className="w-5 h-5" strokeWidth={1.5} />
+              <Wifi className="w-4 h-4 text-emerald-600" strokeWidth={2} />
             )}
-            <span>{isOffline ? "LINK: OFFLINE" : "LINK: ONLINE"}</span>
+            <span>{isOffline ? "Air-Gapped (Isolated)" : "Peer Mesh Online"}</span>
           </button>
 
-          <div className="flex flex-col font-mono text-sm">
-            <span className="text-[var(--color-muted)]">Replication State</span>
-            <span className="text-[var(--color-text)] font-bold">
+          <div className="w-[1px] h-6 bg-slate-200 hidden sm:block" />
+
+          <div className="flex flex-col">
+            <span className="text-[10px] uppercase tracking-wider text-slate-400 font-semibold">
+              Replication State
+            </span>
+            <span className="text-xs font-semibold text-slate-900 mt-0.5">
               {isOffline ? "Air-Gapped Local-Only" : "Peer Mesh Ready"}
             </span>
           </div>
 
-          <div className="w-px h-8 bg-[var(--color-border)] mx-2" />
+          <div className="w-[1px] h-6 bg-slate-200 hidden sm:block" />
 
-          <div className="flex flex-col font-mono text-sm">
-            <span className="text-[var(--color-muted)]">Pending Sync</span>
-            <span className="text-[var(--color-accent)] font-bold accent-text">
-              {pendingCount} ops in outbox
+          <div className="flex flex-col">
+            <span className="text-[10px] uppercase tracking-wider text-slate-400 font-semibold">
+              Pending Outbox
+            </span>
+            <span className="text-xs font-semibold text-sky-700 font-mono mt-0.5">
+              {pendingCount} operations
             </span>
           </div>
 
-          <div className="w-px h-8 bg-[var(--color-border)] mx-2" />
+          <div className="w-[1px] h-6 bg-slate-200 hidden sm:block" />
 
-          <div className="flex flex-col font-mono text-sm">
-            <span className="text-[var(--color-muted)]">Last Sync</span>
-            <span className="text-[var(--color-text)]">{lastSyncTime}</span>
+          <div className="flex flex-col">
+            <span className="text-[10px] uppercase tracking-wider text-slate-400 font-semibold">
+              Last Sync
+            </span>
+            <span className="text-xs text-slate-500 font-mono mt-0.5">
+              {lastSyncTime}
+            </span>
           </div>
         </div>
 
+        {/* Sync Action Button */}
         <div className="flex items-center gap-3">
-          <div className="relative group">
-            <button
-              onClick={handleSyncNow}
-              disabled={isOffline || syncing}
-              className={`flex items-center gap-2 h-12 px-6 rounded-[2px] font-mono font-bold text-base transition-all duration-120 ${
-                isOffline
-                  ? "bg-[var(--color-surface-2)] text-[var(--color-muted)] border border-[var(--color-border)] cursor-not-allowed opacity-60"
-                  : "bg-[var(--color-accent)] text-[var(--color-accent-ink)] border border-[var(--color-accent)] accent-fill"
-              }`}
-            >
-              <RefreshCw
-                className={`w-4 h-4 ${syncing ? "animate-spin" : ""}`}
-                strokeWidth={1.5}
-              />
-              <span>{syncing ? "Syncing..." : "Sync Now"}</span>
-            </button>
-            {isOffline && (
-              <div className="absolute right-0 top-full mt-2 hidden group-hover:block w-56 p-2 rounded-[2px] bg-[var(--color-surface-2)] border border-[var(--color-border)] text-xs font-mono text-[var(--color-muted)] z-20">
-                Disabled while air-gapped. Toggle Link online to sync.
-              </div>
-            )}
-          </div>
+          <button
+            onClick={handleSyncNow}
+            disabled={isOffline || syncing}
+            className={`flex items-center justify-center gap-2 h-10 px-5 rounded-lg font-semibold text-xs transition-all shadow-xs cursor-pointer ${
+              isOffline
+                ? "bg-slate-100 text-slate-400 border border-slate-200 cursor-not-allowed"
+                : "bg-sky-700 hover:bg-sky-800 text-white"
+            }`}
+          >
+            <RefreshCw
+              className={`w-3.5 h-3.5 ${syncing ? "animate-spin" : ""}`}
+              strokeWidth={2}
+            />
+            <span>{syncing ? "Synchronizing..." : "Sync Now"}</span>
+          </button>
         </div>
-      </div>
+      </GlassCard>
 
-      {/* Hero Stat: BANDWIDTH SAVED */}
-      <div className="rounded-[2px] bg-[var(--color-surface)] border border-[var(--color-border)] p-6">
-        <div className="flex items-center justify-between mb-4">
+      {/* Hero Stat: Bandwidth Saved Comparison */}
+      <GlassCard className="p-6">
+        <div className="flex items-center justify-between mb-3 flex-wrap gap-2">
           <div>
-            <span className="font-mono text-sm text-[var(--color-muted)] uppercase tracking-wider">
+            <span className="text-xs font-semibold uppercase tracking-wider text-slate-400">
               Efficiency Metric
             </span>
-            <h2 className="font-mono text-lg font-bold text-[var(--color-text)]">
-              BANDWIDTH SAVED
-            </h2>
+            <h3 className="text-base font-bold text-slate-900 tracking-tight">
+              Bandwidth Conservation
+            </h3>
           </div>
-          <span className="font-mono text-xs px-2.5 py-1 rounded-[2px] bg-[var(--color-surface-2)] border border-[var(--color-border)] text-[var(--color-muted)]">
-            Batch #{report.id} ({report.duration_ms}ms)
-          </span>
+          <GradientBadge variant="neutral" size="sm">
+            Batch #{report.id} ({report.duration_ms}ms RTT)
+          </GradientBadge>
         </div>
 
-        <div className="flex items-baseline gap-4 mb-6">
-          <span className="font-mono text-6xl font-bold text-[var(--color-accent)] accent-text">
+        <div className="flex items-baseline gap-3 mb-5">
+          <span className="text-5xl font-bold tracking-tight font-mono text-emerald-700">
             {report.saved_pct}%
           </span>
-          <span className="font-mono text-base text-[var(--color-muted)]">
-            reduction vs naive replication
+          <span className="text-sm text-slate-500">
+            bandwidth reduction vs naive flood replication
           </span>
         </div>
 
-        {/* Flat Comparison Bars */}
-        <div className="space-y-4">
+        {/* Comparison Bars */}
+        <div className="space-y-3">
           <div>
-            <div className="flex justify-between font-mono text-sm mb-1.5">
-              <span className="text-[var(--color-text)] font-bold">
-                Selective Policy Replication (Actual)
+            <div className="flex justify-between text-xs mb-1.5 font-medium">
+              <span className="text-slate-900 font-semibold">
+                Selective Policy Replication (Actual Egress)
               </span>
-              <span className="text-[var(--color-accent)] font-bold accent-text">
+              <span className="text-emerald-700 font-mono font-bold">
                 {formatBytes(report.bytes_sent)}
               </span>
             </div>
-            <div className="h-6 w-full rounded-[2px] bg-[var(--color-surface-2)] border border-[var(--color-border)] overflow-hidden">
-              <div
-                className="h-full bg-[var(--color-accent)] transition-all duration-120 accent-fill"
-                style={{
+            <div className="h-3 w-full rounded-full bg-slate-100 overflow-hidden border border-slate-200">
+              <motion.div
+                className="h-full rounded-full bg-emerald-600"
+                initial={{ width: 0 }}
+                animate={{
                   width: `${(report.bytes_sent / report.bytes_baseline) * 100}%`,
                 }}
+                transition={{ duration: 0.6, ease: "easeOut" }}
               />
             </div>
           </div>
 
           <div>
-            <div className="flex justify-between font-mono text-sm mb-1.5">
-              <span className="text-[var(--color-muted)]">
-                Sync-Everything Baseline (Naive Sync)
+            <div className="flex justify-between text-xs mb-1.5 font-medium">
+              <span className="text-slate-500">
+                Sync-Everything Baseline (Naive Transfer)
               </span>
-              <span className="text-[var(--color-muted)]">
+              <span className="text-slate-600 font-mono">
                 {formatBytes(report.bytes_baseline)}
               </span>
             </div>
-            <div className="h-6 w-full rounded-[2px] bg-transparent border border-[var(--color-accent)] overflow-hidden">
-              <div
-                className="h-full bg-[var(--color-accent-dim)]"
-                style={{ width: "100%" }}
-              />
+            <div className="h-3 w-full rounded-full bg-slate-100 overflow-hidden border border-slate-200">
+              <div className="h-full bg-slate-300 rounded-full w-full" />
             </div>
           </div>
         </div>
-      </div>
+      </GlassCard>
 
-      {/* Three Equal Columns: PUSHED / HELD / PULLED */}
+      {/* Three Columns: Pushed / Held / Pulled */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
         {/* PUSHED Column */}
-        <div className="rounded-[2px] bg-[var(--color-surface)] border border-[var(--color-border)] p-4 flex flex-col">
-          <div className="flex items-center justify-between pb-3 mb-3 border-b border-[var(--color-border)]">
-            <div className="flex items-center gap-2">
-              <ArrowUpRight
-                className="w-4 h-4 text-[var(--color-accent)] accent-text"
-                strokeWidth={1.5}
-              />
-              <span className="font-mono font-bold text-base text-[var(--color-text)]">
-                PUSHED
-              </span>
-            </div>
-            <span className="font-mono text-sm text-[var(--color-accent)] font-bold accent-text">
-              {report.pushed.length} items
-            </span>
-          </div>
-
-          <div className="space-y-2.5 flex-1">
-            {report.pushed.map((item) => (
-              <div
-                key={item.mem_id}
-                className="p-3 rounded-[2px] bg-[var(--color-surface-2)] border border-[var(--color-border)] flex flex-col gap-1.5"
-              >
-                <div className="flex items-center justify-between">
-                  <span className="font-mono text-sm font-bold text-[var(--color-accent)] accent-text">
-                    {item.mem_id}
-                  </span>
-                  <StatusBadge status={item.status} />
+        <GlassCard className="p-4 flex flex-col justify-between">
+          <div>
+            <div className="flex items-center justify-between pb-3 mb-3 border-b border-slate-200">
+              <div className="flex items-center gap-2">
+                <div className="w-6 h-6 rounded-md bg-emerald-100 flex items-center justify-center">
+                  <ArrowUpRight className="w-3.5 h-3.5 text-emerald-700" />
                 </div>
-                <p className="text-base text-[var(--color-text)] font-medium">
-                  {item.title}
-                </p>
-                <p className="text-sm text-[var(--color-muted)]">
-                  {item.reason}
-                </p>
-                <div className="mt-1 flex items-center justify-between font-mono text-xs text-[var(--color-muted)]">
-                  <span className="uppercase">{item.kind}</span>
-                  <span>{formatBytes(item.bytes)}</span>
-                </div>
+                <span className="text-xs font-bold uppercase tracking-wider text-slate-900">
+                  Pushed (Local)
+                </span>
               </div>
-            ))}
+              <GradientBadge variant="tier1" size="sm">
+                {report.pushed.length} items
+              </GradientBadge>
+            </div>
+
+            <div className="space-y-2">
+              {report.pushed.map((item) => (
+                <div
+                  key={item.mem_id}
+                  className="p-3 rounded-lg bg-slate-50 border border-slate-200 flex flex-col gap-1"
+                >
+                  <div className="flex items-center justify-between">
+                    <span className="font-mono text-xs font-bold text-emerald-700">
+                      {item.mem_id}
+                    </span>
+                    <StatusBadge status={item.status} />
+                  </div>
+                  <p className="text-xs font-semibold text-slate-900 truncate">
+                    {item.title}
+                  </p>
+                  <p className="text-[11px] text-slate-500 truncate">
+                    {item.reason}
+                  </p>
+                  <div className="mt-1 flex items-center justify-between font-mono text-[10px] text-slate-400">
+                    <span className="uppercase">{item.kind}</span>
+                    <span>{formatBytes(item.bytes)}</span>
+                  </div>
+                </div>
+              ))}
+            </div>
           </div>
-        </div>
+        </GlassCard>
 
         {/* HELD Column */}
-        <div className="rounded-[2px] bg-[var(--color-surface)] border border-[var(--color-border)] p-4 flex flex-col">
-          <div className="flex items-center justify-between pb-3 mb-3 border-b border-[var(--color-border)]">
-            <div className="flex items-center gap-2">
-              <Pause
-                className="w-4 h-4 text-[var(--color-accent)] accent-text"
-                strokeWidth={1.5}
-              />
-              <span className="font-mono font-bold text-base text-[var(--color-text)]">
-                HELD (POLICY)
-              </span>
-            </div>
-            <span className="font-mono text-sm text-[var(--color-muted)] font-bold">
-              {report.held.length} items
-            </span>
-          </div>
-
-          <div className="space-y-2.5 flex-1">
-            {report.held.map((item) => (
-              <div
-                key={item.mem_id}
-                className="p-3 rounded-[2px] bg-[var(--color-surface-2)] border border-[var(--color-border)] flex flex-col gap-1.5"
-              >
-                <div className="flex items-center justify-between">
-                  <span className="font-mono text-sm font-bold text-[var(--color-muted)]">
-                    {item.mem_id}
-                  </span>
-                  <StatusBadge status={item.status} />
+        <GlassCard className="p-4 flex flex-col justify-between">
+          <div>
+            <div className="flex items-center justify-between pb-3 mb-3 border-b border-slate-200">
+              <div className="flex items-center gap-2">
+                <div className="w-6 h-6 rounded-md bg-amber-100 flex items-center justify-center">
+                  <Pause className="w-3.5 h-3.5 text-amber-700" />
                 </div>
-                <p className="text-base text-[var(--color-text)] font-medium">
-                  {item.title}
-                </p>
-                <p className="text-sm text-[var(--color-muted)]">
-                  {item.reason}
-                </p>
-                <div className="mt-1 flex items-center justify-between font-mono text-xs text-[var(--color-muted)]">
-                  <span className="uppercase">{item.kind}</span>
-                  <span>{formatBytes(item.bytes)}</span>
-                </div>
+                <span className="text-xs font-bold uppercase tracking-wider text-slate-900">
+                  Held (Policy)
+                </span>
               </div>
-            ))}
+              <GradientBadge variant="warning" size="sm">
+                {report.held.length} items
+              </GradientBadge>
+            </div>
+
+            <div className="space-y-2">
+              {report.held.map((item) => (
+                <div
+                  key={item.mem_id}
+                  className="p-3 rounded-lg bg-slate-50 border border-slate-200 flex flex-col gap-1"
+                >
+                  <div className="flex items-center justify-between">
+                    <span className="font-mono text-xs font-bold text-amber-700">
+                      {item.mem_id}
+                    </span>
+                    <StatusBadge status={item.status} />
+                  </div>
+                  <p className="text-xs font-semibold text-slate-900 truncate">
+                    {item.title}
+                  </p>
+                  <p className="text-[11px] text-slate-500 truncate">
+                    {item.reason}
+                  </p>
+                  <div className="mt-1 flex items-center justify-between font-mono text-[10px] text-slate-400">
+                    <span className="uppercase">{item.kind}</span>
+                    <span>{formatBytes(item.bytes)}</span>
+                  </div>
+                </div>
+              ))}
+            </div>
           </div>
-        </div>
+        </GlassCard>
 
         {/* PULLED Column */}
-        <div className="rounded-[2px] bg-[var(--color-surface)] border border-[var(--color-border)] p-4 flex flex-col">
-          <div className="flex items-center justify-between pb-3 mb-3 border-b border-[var(--color-border)]">
-            <div className="flex items-center gap-2">
-              <ArrowDownLeft
-                className="w-4 h-4 text-[var(--color-accent)] accent-text"
-                strokeWidth={1.5}
-              />
-              <span className="font-mono font-bold text-base text-[var(--color-text)]">
-                PULLED (HUB)
-              </span>
-            </div>
-            <span className="font-mono text-sm text-[var(--color-accent)] font-bold accent-text">
-              {report.pulled.length} items
-            </span>
-          </div>
-
-          <div className="space-y-2.5 flex-1">
-            {report.pulled.map((item) => (
-              <div
-                key={item.mem_id}
-                className="p-3 rounded-[2px] bg-[var(--color-surface-2)] border border-[var(--color-border)] flex flex-col gap-1.5"
-              >
-                <div className="flex items-center justify-between">
-                  <span className="font-mono text-sm font-bold text-[var(--color-accent)] accent-text">
-                    {item.mem_id}
-                  </span>
-                  <StatusBadge status={item.status} />
+        <GlassCard className="p-4 flex flex-col justify-between">
+          <div>
+            <div className="flex items-center justify-between pb-3 mb-3 border-b border-slate-200">
+              <div className="flex items-center gap-2">
+                <div className="w-6 h-6 rounded-md bg-sky-100 flex items-center justify-center">
+                  <ArrowDownLeft className="w-3.5 h-3.5 text-sky-700" />
                 </div>
-                <p className="text-base text-[var(--color-text)] font-medium">
-                  {item.title}
-                </p>
-                <p className="text-sm text-[var(--color-muted)]">
-                  {item.reason}
-                </p>
-                <div className="mt-1 flex items-center justify-between font-mono text-xs text-[var(--color-muted)]">
-                  <span className="uppercase">{item.kind}</span>
-                  <span>{formatBytes(item.bytes)}</span>
-                </div>
+                <span className="text-xs font-bold uppercase tracking-wider text-slate-900">
+                  Pulled (Hub)
+                </span>
               </div>
-            ))}
+              <GradientBadge variant="tier2" size="sm">
+                {report.pulled.length} items
+              </GradientBadge>
+            </div>
+
+            <div className="space-y-2">
+              {report.pulled.map((item) => (
+                <div
+                  key={item.mem_id}
+                  className="p-3 rounded-lg bg-slate-50 border border-slate-200 flex flex-col gap-1"
+                >
+                  <div className="flex items-center justify-between">
+                    <span className="font-mono text-xs font-bold text-sky-700">
+                      {item.mem_id}
+                    </span>
+                    <StatusBadge status={item.status} />
+                  </div>
+                  <p className="text-xs font-semibold text-slate-900 truncate">
+                    {item.title}
+                  </p>
+                  <p className="text-[11px] text-slate-500 truncate">
+                    {item.reason}
+                  </p>
+                  <div className="mt-1 flex items-center justify-between font-mono text-[10px] text-slate-400">
+                    <span className="uppercase">{item.kind}</span>
+                    <span>{formatBytes(item.bytes)}</span>
+                  </div>
+                </div>
+              ))}
+            </div>
           </div>
-        </div>
+        </GlassCard>
       </div>
 
       {/* Outbox Table */}
-      <div className="rounded-[2px] bg-[var(--color-surface)] border border-[var(--color-border)] p-5">
+      <div className="rounded-xl bg-white border border-slate-200 shadow-sm p-5">
         <div className="flex items-center justify-between mb-4">
-          <div className="flex items-center gap-3">
-            <HardDrive
-              className="w-5 h-5 text-[var(--color-muted)]"
-              strokeWidth={1.5}
-            />
-            <h3 className="font-mono font-bold text-lg text-[var(--color-text)]">
+          <div className="flex items-center gap-2.5">
+            <HardDrive className="w-4 h-4 text-slate-400" />
+            <h3 className="text-sm font-bold text-slate-900 tracking-tight uppercase">
               Ledger Outbox Queue
             </h3>
           </div>
-          <span className="font-mono text-xs text-[var(--color-muted)]">
+          <span className="text-xs font-mono text-slate-500">
             Persisted in SQLite WAL
           </span>
         </div>
 
         <div className="overflow-x-auto">
-          <table className="w-full border-collapse">
+          <table className="w-full text-left border-collapse">
             <thead>
-              <tr className="border-b border-[var(--color-border)] text-left font-mono text-xs text-[var(--color-muted)] uppercase">
+              <tr className="border-b border-slate-200 text-[11px] uppercase tracking-wider font-semibold text-slate-500">
                 <th className="py-2.5 px-3">Op ID</th>
                 <th className="py-2.5 px-3">Memory</th>
                 <th className="py-2.5 px-3">State</th>
@@ -410,17 +407,17 @@ export default function SyncPage() {
               {outbox.map((op) => (
                 <tr
                   key={op.op_id}
-                  className="border-b border-[var(--color-border)] font-mono text-sm h-12 hover:bg-[var(--color-surface-2)] transition-colors duration-120"
+                  className="border-b border-slate-100 text-xs h-11 hover:bg-slate-50 transition-colors"
                 >
-                  <td className="py-2 px-3 font-bold text-[var(--color-accent)] accent-text">
+                  <td className="py-2 px-3 font-mono font-bold text-sky-700">
                     {op.op_id}
                   </td>
                   <td className="py-2 px-3">
                     <div className="flex flex-col">
-                      <span className="font-bold text-[var(--color-text)] font-sans text-base">
+                      <span className="font-semibold text-slate-900">
                         {op.title}
                       </span>
-                      <span className="text-xs text-[var(--color-muted)]">
+                      <span className="text-[11px] font-mono text-slate-400">
                         {op.mem_id}
                       </span>
                     </div>
@@ -428,13 +425,13 @@ export default function SyncPage() {
                   <td className="py-2 px-3">
                     <StatusBadge status={op.state} />
                   </td>
-                  <td className="py-2 px-3 text-[var(--color-muted)]">
+                  <td className="py-2 px-3 font-mono text-slate-600">
                     {op.attempts}
                   </td>
-                  <td className="py-2 px-3 text-[var(--color-muted)]">
+                  <td className="py-2 px-3 font-mono text-slate-600">
                     {op.next_retry}
                   </td>
-                  <td className="py-2 px-3 text-right text-[var(--color-text)]">
+                  <td className="py-2 px-3 text-right font-mono text-slate-900 font-semibold">
                     {formatBytes(op.bytes)}
                   </td>
                 </tr>

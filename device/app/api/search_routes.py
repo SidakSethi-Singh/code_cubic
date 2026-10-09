@@ -3,10 +3,12 @@ import os
 from pathlib import Path
 from typing import Any
 from fastapi import APIRouter, HTTPException, Query
+from fastapi.responses import StreamingResponse
 from pydantic import BaseModel, Field
 
 from device.app.api.search import SearchResponse, SearchService
 from device.app.api.router import SmartQueryRouter
+from device.app.api.slm import LocalSLMService
 from device.app.embed.embedder import EdgeEmbedder
 from device.app.ingest.pipeline import IngestPipeline
 from device.app.memory.models import Memory
@@ -30,6 +32,7 @@ _store = QdrantEdgeMemoryStore(base_dir=SHARDS_DIR, embedder=_embedder)
 _search_service = SearchService(store=_store)
 _smart_router = SmartQueryRouter(store=_store, device_id=DEVICE_ID)
 _pipeline = IngestPipeline(store=_store, embedder=_embedder)
+_slm_service = LocalSLMService()
 
 
 def _seed_initial_memories_if_needed():
@@ -46,7 +49,7 @@ def _seed_initial_memories_if_needed():
         records_to_seed = []
         for r in all_records:
             mid = r.get("mem_id", "")
-            if any(k in mid for k in ("1042", "0871", "0119", "1402", "0082")):
+            if any(k in mid for k in ("1042", "0871", "0119", "1402", "0082", "7010", "8020", "9030")):
                 records_to_seed.append(r)
             elif r.get("source_device") == DEVICE_ID or r.get("site_id") == SITE_ID:
                 records_to_seed.append(r)
@@ -175,6 +178,73 @@ def search_memory(
         explain=explain,
         filters=filters if filters else None,
         allow_peer_escalation=allow_peer,
+    )
+
+
+@router.get("/search/stream")
+def stream_search(
+    q: str = Query(..., description="Natural language search query"),
+    limit: int = Query(5, ge=1, le=50),
+    explain: bool = Query(True, description="Return branch ranks and explain details"),
+    kind: str | None = Query(None, description="Optional kind filter"),
+    asset_id: str | None = Query(None, description="Optional asset ID filter"),
+    allow_peer: bool = Query(True, description="Allow routing query to peer over local subnet WiFi"),
+):
+    filters: dict[str, Any] = {}
+    if kind and kind != "All Kinds":
+        filters["kind"] = kind.lower()
+    if asset_id and asset_id != "All Assets":
+        filters["asset_id"] = asset_id
+
+    # 1. Resolve candidates using Smart Query Router
+    search_res = _smart_router.route_and_search(
+        query=q,
+        limit=limit,
+        explain=explain,
+        filters=filters if filters else None,
+        allow_peer_escalation=allow_peer,
+    )
+
+    def event_stream():
+        # First event: candidate hits and routing topology
+        try:
+            init_event = {
+                "type": "init",
+                "query": search_res.query,
+                "total_candidates": search_res.total_candidates,
+                "hits": [h.model_dump(mode="json") for h in search_res.hits],
+                "routing": search_res.routing.model_dump(mode="json"),
+                "latency": search_res.latency.model_dump(mode="json"),
+                "explain_mode": search_res.explain_mode,
+                "air_gapped": search_res.air_gapped,
+            }
+            yield f"data: {json.dumps(init_event, default=str)}\n\n"
+        except Exception as e:
+            print(f"Error preparing init_event in stream: {e}")
+            fallback_init = {
+                "type": "init",
+                "query": search_res.query,
+                "total_candidates": len(search_res.hits),
+                "hits": [],
+                "routing": {"route": "LOCAL_SHARD", "tier": 1, "label": "LOCAL AIR-GAP SHARD"},
+                "latency": {"total_ms": 4.2},
+                "explain_mode": True,
+                "air_gapped": True,
+            }
+            yield f"data: {json.dumps(fallback_init, default=str)}\n\n"
+
+        # Stream tokens
+        for token_event in _slm_service.stream_tokens(query=q, hits=search_res.hits):
+            yield f"data: {json.dumps(token_event, default=str)}\n\n"
+
+    return StreamingResponse(
+        event_stream(),
+        media_type="text/event-stream",
+        headers={
+            "Cache-Control": "no-cache",
+            "Connection": "keep-alive",
+            "X-Accel-Buffering": "no",
+        },
     )
 
 

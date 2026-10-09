@@ -1,5 +1,66 @@
 [
   {
+    "mem_id": "70100000-0000-0000-0000-000000007010",
+    "title": "Paytm POS Offline Transaction Batch Settlement Policy",
+    "content": "Paytm POS Offline Transaction Batch Settlement Policy. When merchant terminal loses 4G/LTE connectivity, offline transactions are cryptographically signed with terminal private key into SQLite WAL. Maximum offline batch ceiling is Rs 25,000 across 50 transactions before requiring local Merkle verification against Soundbox debug link or P2P terminal sync.",
+    "kind": "manual",
+    "authority": 3,
+    "status": "active",
+    "sync_state": "synced",
+    "scope": "fleet",
+    "site_id": "Plant North",
+    "asset_id": "POS-402",
+    "asset_type": "Smart POS Terminal",
+    "source_device": "Fleet Baseline Rev 12",
+    "target_shard": "device_memory",
+    "payload": {
+      "title": "Paytm POS Offline Transaction Batch Settlement Policy",
+      "doc_ref": "#PAYTM-POS-7010",
+      "batch_limit_inr": 25000,
+      "offline_tx_max": 50
+    }
+  },
+  {
+    "mem_id": "80200000-0000-0000-0000-000000008020",
+    "title": "Paytm Soundbox Audio Firmware Invariant & BLE Telemetry",
+    "content": "Paytm Soundbox Audio Firmware Invariant & BLE Telemetry. Dual-channel audio confirmation requires local playback verification hash before clearing merchant transaction outbox. Soundbox local BLE broadcast synchronizes transaction receipts with peer merchant POS without internet connection, preventing duplicate announcements.",
+    "kind": "bulletin",
+    "authority": 2,
+    "status": "active",
+    "sync_state": "synced",
+    "scope": "site",
+    "site_id": "Plant North",
+    "asset_id": "SND-108",
+    "asset_type": "Audio Soundbox",
+    "source_device": "Device A",
+    "target_shard": "device_memory",
+    "payload": {
+      "title": "Paytm Soundbox Audio Firmware Invariant & BLE Telemetry",
+      "doc_ref": "#PAYTM-SND-8020",
+      "hardware": "Soundbox 4G Pro"
+    }
+  },
+  {
+    "mem_id": "90300000-0000-0000-0000-000000009030",
+    "title": "Offline UPI Dual-Terminal Dispute Arbitration Invariant",
+    "content": "Offline UPI Dual-Terminal Dispute Arbitration Invariant. When two merchant terminals record conflicting transaction timestamps during network partition, dispute arbitration rule C1 enforces Bank Host baseline authority (Level 3) over local terminal overrides (Level 1), preserving ledger consistency without cloud roundtrip.",
+    "kind": "incident",
+    "authority": 3,
+    "status": "active",
+    "sync_state": "synced",
+    "scope": "fleet",
+    "site_id": "Plant North",
+    "asset_id": "POS-402",
+    "asset_type": "Smart POS Terminal",
+    "source_device": "Fleet Baseline Rev 12",
+    "target_shard": "device_memory",
+    "payload": {
+      "title": "Offline UPI Dual-Terminal Dispute Arbitration Invariant",
+      "doc_ref": "#PAYTM-ARB-9030",
+      "rule": "C1-Authority-First"
+    }
+  },
+  {
     "mem_id": "10420000-0000-0000-0000-000000001042",
     "title": "P-204 Coupling Torquing Calibration Standard",
     "content": "P-204 Coupling Torquing Calibration Standard. Torque sequence requires cross-pattern tightening in 40 Nm increments up to 145 Nm final. Over-torquing leads to asymmetric preload, triggering bearing race deflection and severe grinding noise above 1,750 RPM.",

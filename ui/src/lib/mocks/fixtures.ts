@@ -343,6 +343,67 @@ export const MOCK_CONFLICT: ConflictRecord = {
   created_at: ago(0.25),
 };
 
+export const MOCK_PAYTM_CONFLICT: ConflictRecord = {
+  id: "PAYTM-TX-904",
+  claim: "POS Merchant ₹25,000 Batch Settlement Ledger State",
+  asset_id: "POS-402",
+  sources: [
+    {
+      mem_id: "PAYTM-HOST-9030",
+      title: "Bank Host Baseline Certificate",
+      claim_value: "₹24,850",
+      authority: 3,
+      source_label: "Core Banking Host (Auth 3)",
+      kind: "bulletin",
+      status: "winner",
+      version: 12,
+      updated_at: ago(0.08),
+    },
+    {
+      mem_id: "PAYTM-POS-7010",
+      title: "Terminal A Offline WAL",
+      claim_value: "₹25,100",
+      authority: 2,
+      source_label: "POS-402 SQLite WAL (Device A)",
+      kind: "note",
+      status: "disputed",
+      version: 1,
+      updated_at: ago(0.04),
+    },
+    {
+      mem_id: "PAYTM-SND-8020",
+      title: "Soundbox BLE Audio Cache",
+      claim_value: "₹24,500",
+      authority: 1,
+      source_label: "Soundbox BLE Broadcast",
+      kind: "manual",
+      status: "superseded",
+      version: 1,
+      updated_at: ago(0.3),
+    },
+  ],
+  winner_index: 0,
+  rule_trail: [
+    { rule: "C1", label: "Authority Evaluation", detail: "Bank Host Master (Auth 3) > POS-402 SQLite WAL (Auth 2) > Soundbox BLE Cache (Auth 1)", decided: true },
+    { rule: "C2", label: "Merkle Batch Proof", detail: "Cryptographic root hash verified on local terminal (0 internet egress)", decided: true },
+    { rule: "C3", label: "Temporal Partition Time", detail: "Host baseline reconciles divergent terminal timestamps deterministically", decided: false },
+    { rule: "C4", label: "Merchant Review", detail: "₹250 discrepancy safely quarantined in local WAL for merchant audit", decided: false },
+  ],
+  lineage: [
+    { timestamp: ago(0.3), label: "Soundbox BLE Broadcast", detail: "Ledger: ₹24,500 • 49 Audio Announcements", hash: "sb71...109e" },
+    { timestamp: ago(0.08), label: "Bank Host Master Certificate", detail: "Ledger: ₹24,850 • Ed25519 Signed Batch", hash: "bk99...4201" },
+    { timestamp: ago(0.04), label: "Terminal A WAL Fork", detail: "Ledger: ₹25,100 • Terminal A Glitch (+₹250)", hash: "wal0...7731" },
+    { timestamp: now, label: "Arbitration #PAYTM-TX-904", detail: "₹24,850 active; ₹250 quarantined in WAL", hash: "arb0...9040" },
+  ],
+  status: "open",
+  created_at: ago(0.1),
+};
+
+export const MOCK_CONFLICTS: ConflictRecord[] = [
+  MOCK_PAYTM_CONFLICT,
+  MOCK_CONFLICT,
+];
+
 export const MOCK_EVENTS: ActivityEvent[] = [
   { id: "E-001", type: "conflict", timestamp: ago(0.25), title: "Conflict CR-4821 opened", detail: "P-204 coupling torque: 40 vs 45 vs 42 Nm", mem_id: "M-1042" },
   { id: "E-002", type: "push", timestamp: ago(0.5), title: "Sync push completed", detail: "3 memories pushed, 2 held, 82% bandwidth saved", mem_id: "M-2201" },
